@@ -766,6 +766,32 @@ public  subroutine test_openmp(Nf_tot)
     
     
     
+    <h3>Description</h3>
+    <p>Procedure for testing the libray in an OpenMP parallel framework.</p>
+<p>It is used for testing thread-safe capability and the
+ library speedup into OpenMP parallel framework. The output is a parallel (partitioned) PStructuredGrid file.
+ <div class="alert alert-info" role="alert"><h4>Note</h4>The whole grid is composed of blocks of 32x32x32 structured mesh. The total number of blocks/files, Nf_tot, is passed as
+ argument. The whole grid is built up composing the blocks along the X axis with a regular shift as following:</div></p>
+<div class="codehilite"><pre> y ^
+   |               ny2 +------------+------------+------------+------///////////-----+
+   |                   |            |            |            |                      |
+   |                   |            |            |            |                      |
+   |                   |            |            |            |                      |
+   |                   |            |            |            |                      |
+   o--------&gt;      ny1 +------------+------------+------------+------///////////-----+
+            x         nx1          nx2    2*(nx2-nx+1)  3*(nx2-nx+1)          Nf_tot*(nx2-nx+1)
+</pre></div>
+
+
+<p><div class="alert alert-info" role="alert"><h4>Note</h4>When the total number of blocks/files, Nf_tot, is not an integral of the number of threads used, Nths, the last
+ thread saves its own files (Nf_tot/Nths) plus the remainder blocks/files (mod(Nf_tot,Nths)). As a consequence the last
+ thread could has different elapsed time and it could degrade the speedup. Therefore the subroutine prints to stdout the
+ maximum and minimum elapsed time among the threads as well the average elapsed time in order to facilitate the assessing
+ of the parallel scalability.</div></p>
+<p><div class="alert alert-info" role="alert"><h4>Note</h4>It is important to note that the output files initialization and finalization must be done outside the parallel ambient.</div></p>
+<p><div class="alert alert-info" role="alert"><h4>Note</h4>The array containing the files indexes could be shared among threads, but the counter of this array ('p' in this example)
+ must be private.</div></p>
+    
     <br>
     
     <section>

@@ -724,6 +724,19 @@ public  subroutine test_pstrg()
     
     
     
+    <h3>Description</h3>
+    <p>Procedure for testing parallel (partitioned) PStructuredGrid functions.</p>
+<p>The mesh is a simple prism partitioned into two pieces along x direction at ordinate i=nx2_p(1).</p>
+<div class="codehilite"><pre> y ^
+   |               ny2 +-----------------+--------------+
+   |                   |                 |              |
+   |                   |                 |              |
+   |                   |                 |              |
+   |                   |                 |              |
+   o--------&gt;      ny1 +-----------------+--------------+
+            x         nx1               i=nx2_p(1)     nx2
+</pre></div>
+    
     <br>
     
     <section>

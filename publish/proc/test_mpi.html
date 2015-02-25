@@ -774,6 +774,29 @@ public  subroutine test_mpi(Nf_tot)
     
     
     
+    <h3>Description</h3>
+    <p>Procedure for testing the library in an MPI parallel framework.</p>
+<p>It is used for testing the process-safe capability and the
+ library speedup into MPI parallel framework.  The output is a parallel (partitioned) PStructuredGrid file.
+ <div class="alert alert-info" role="alert"><h4>Note</h4>The whole grid is composed of blocks of 32x32x32 structured mesh. The total number of blocks/files, Nf_tot, is passed as
+ argument. The whole grid is built up composing the blocks along the X axis with a regular shift as following:</div></p>
+<div class="codehilite"><pre> y ^
+   |               ny2 +------------+------------+------------+------///////////-----+
+   |                   |            |            |            |                      |
+   |                   |            |            |            |                      |
+   |                   |            |            |            |                      |
+   |                   |            |            |            |                      |
+   o--------&gt;      ny1 +------------+------------+------------+------///////////-----+
+            x         nx1          nx2    2*(nx2-nx+1)  3*(nx2-nx+1)          Nf_tot*(nx2-nx+1)
+</pre></div>
+
+
+<p><div class="alert alert-info" role="alert"><h4>Note</h4>When the total number of blocks/files, Nf_tot, is not an integral of the number of processes used, nproc, the last
+ process saves its own files (Nf_tot/nproc) plus the remainder blocks/files (mod(Nf_tot,nproc)). As a consequence the last
+ process could has different elapsed time and it could degrade the speedup. Therefore the subroutine prints to stdout the
+ maximum and minimum elapsed time among the processes as well the average elapsed time in order to facilitate the assessing
+ of the parallel scalability.</div></p>
+    
     <br>
     
     <section>
