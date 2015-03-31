@@ -128,11 +128,15 @@
       
       <a class="list-group-item" href="../proc/vtm_wrf_xml_string.html#var-flistd">flistd</a>
       
-      <a class="list-group-item" href="../proc/vtm_wrf_xml_string.html#var-fname">fname</a>
+      <a class="list-group-item" href="../proc/vtm_wrf_xml_string.html#var-nlistd">nlistd</a>
+      
+      <a class="list-group-item" href="../proc/vtm_wrf_xml_string.html#var-dummy">dummy</a>
       
       <a class="list-group-item" href="../proc/vtm_wrf_xml_string.html#var-d_len">d_len</a>
       
       <a class="list-group-item" href="../proc/vtm_wrf_xml_string.html#var-i">i</a>
+      
+      <a class="list-group-item" href="../proc/vtm_wrf_xml_string.html#var-n">n</a>
       
     </div>
   </div>
@@ -413,6 +417,22 @@
       
       <a class="list-group-item" href="../interface/str.html">str</a>
       
+      <a class="list-group-item" href="../proc/str_a_i1p.html">str_a_I1P</a>
+      
+      <a class="list-group-item" href="../proc/str_a_i2p.html">str_a_I2P</a>
+      
+      <a class="list-group-item" href="../proc/str_a_i4p.html">str_a_I4P</a>
+      
+      <a class="list-group-item" href="../proc/str_a_i8p.html">str_a_I8P</a>
+      
+      <a class="list-group-item" href="../proc/str_a_r16p.html">str_a_R16P</a>
+      
+      <a class="list-group-item" href="../proc/str_a_r4p.html">str_a_R4P</a>
+      
+      <a class="list-group-item" href="../proc/str_a_r8p.html">str_a_R8P</a>
+      
+      <a class="list-group-item" href="../proc/str_bol.html">str_bol</a>
+      
       <a class="list-group-item" href="../proc/str_i1p.html">str_I1P</a>
       
       <a class="list-group-item" href="../proc/str_i2p.html">str_I2P</a>
@@ -683,7 +703,7 @@
     
     <div class="col-lg-9" id='text'>
     <h2>
-private  function VTM_WRF_XML_string(delimiter, flist)
+private  function VTM_WRF_XML_string(delimiter, nlist, flist)
 </h2>
     
   
@@ -714,6 +734,21 @@ private  function VTM_WRF_XML_string(delimiter, flist)
   
   <td></td><td>::</td>
   <td><strong>delimiter</strong></td><td><p>Delimiter of files into files list string.</p></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><a class="anchor" name="var-nlist"></a>character(len=*),</td>
+  <td>intent(in),</td>
+  <td>optional</td>
+  
+  <td></td><td>::</td>
+  <td><strong>nlist</strong></td><td><p>List names attributed to wrapped files.</p></td>
   
 </tr>
 
@@ -754,6 +789,12 @@ private  function VTM_WRF_XML_string(delimiter, flist)
 <h3>Examples of usage</h3>
 <h4>Example: 3 files block with default delimiter</h4>
 <div class="codehilite"><pre> <span class="n">E_IO</span> <span class="o">=</span> <span class="n">VTK_WRF_XML</span><span class="p">(</span><span class="n">flist</span><span class="o">=</span><span class="s1">&#39;file_1.vts&amp;file_2.vts&amp;file_3.vtu&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<h4>Example: 3 files block with custom name</h4>
+<div class="codehilite"><pre> <span class="n">E_IO</span> <span class="o">=</span> <span class="n">VTK_WRF_XML</span><span class="p">(</span><span class="n">flist</span><span class="o">=</span><span class="s1">&#39;file_1.vts&amp;file_2.vts&amp;file_3.vtu&#39;</span><span class="p">,&amp;</span>
+                    <span class="n">nlist</span><span class="o">=</span><span class="s1">&#39;foo&amp;bar&amp;baz&#39;</span><span class="p">)</span>
 </pre></div>
 
 
@@ -823,11 +864,25 @@ private  function VTM_WRF_XML_string(delimiter, flist)
   
 <tr>
   
-  <td><a class="anchor" name="var-fname"></a>character(len=len(flist)),</td>
+  <td><a class="anchor" name="var-nlistd"></a>character(len=len(flist)),</td>
   
   <td>public</td>
   <td></td><td>::</td>
-  <td><strong>fname</strong></td><td></td><td></td><td><p>Dummy file name.</p></td>
+  <td><strong>nlistd</strong></td><td></td><td></td><td><p>Dummy names list.</p></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><a class="anchor" name="var-dummy"></a>character(len=len(flist)),</td>
+  
+  <td>public</td>
+  <td></td><td>::</td>
+  <td><strong>dummy</strong>(1:2)</td><td></td><td></td><td><p>Dummy strings.</p></td>
   
 </tr>
 
@@ -855,7 +910,21 @@ private  function VTM_WRF_XML_string(delimiter, flist)
   
   <td>public</td>
   <td></td><td>::</td>
-  <td><strong>i</strong></td><td></td><td></td><td><p>Counter.</p></td>
+  <td><strong>i</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><a class="anchor" name="var-n"></a>integer(kind=I4P),</td>
+  
+  <td>public</td>
+  <td></td><td>::</td>
+  <td><strong>n</strong></td><td></td><td></td><td><p>Counters.</p></td>
   
 </tr>
 

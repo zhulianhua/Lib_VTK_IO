@@ -403,6 +403,22 @@
       
       <a class="list-group-item" href="../interface/str.html">str</a>
       
+      <a class="list-group-item" href="../proc/str_a_i1p.html">str_a_I1P</a>
+      
+      <a class="list-group-item" href="../proc/str_a_i2p.html">str_a_I2P</a>
+      
+      <a class="list-group-item" href="../proc/str_a_i4p.html">str_a_I4P</a>
+      
+      <a class="list-group-item" href="../proc/str_a_i8p.html">str_a_I8P</a>
+      
+      <a class="list-group-item" href="../proc/str_a_r16p.html">str_a_R16P</a>
+      
+      <a class="list-group-item" href="../proc/str_a_r4p.html">str_a_R4P</a>
+      
+      <a class="list-group-item" href="../proc/str_a_r8p.html">str_a_R8P</a>
+      
+      <a class="list-group-item" href="../proc/str_bol.html">str_bol</a>
+      
       <a class="list-group-item" href="../proc/str_i1p.html">str_I1P</a>
       
       <a class="list-group-item" href="../proc/str_i2p.html">str_I2P</a>
@@ -673,7 +689,7 @@
     
     <div class="col-lg-9" id='text'>
     <h2>
-private  function VTM_WRF_XML_array(flist)
+private  function VTM_WRF_XML_array(nlist, flist)
 </h2>
     
   
@@ -691,6 +707,21 @@ private  function VTM_WRF_XML_array(flist)
 
 
 <tbody>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><a class="anchor" name="var-nlist"></a>character(len=*),</td>
+  <td>intent(in),</td>
+  <td>optional</td>
+  
+  <td></td><td>::</td>
+  <td><strong>nlist</strong>(:)</td><td><p>List names attributed to wrapped files.</p></td>
+  
+</tr>
 
   
   
@@ -725,8 +756,14 @@ private  function VTM_WRF_XML_array(flist)
     <h3>Description</h3>
     <p>Function for saving the list of VTK-XML wrapped files by the actual block of the mutliblock VTM file.</p>
 <p><div class="alert alert-info" role="alert"><h4>Note</h4>the list is passed as an array.</div></p>
-<h4>Example of usage: 3 files block with default delimiter</h4>
+<h4>Example of usage: 3 files blocks</h4>
 <div class="codehilite"><pre> <span class="n">E_IO</span> <span class="o">=</span> <span class="n">VTK_WRF_XML</span><span class="p">(</span><span class="n">flist</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;file_1.vts&#39;</span><span class="p">,</span><span class="s1">&#39;file_2.vts&#39;</span><span class="p">,</span><span class="s1">&#39;file_3.vtu&#39;</span><span class="p">])</span>
+</pre></div>
+
+
+<h4>Example of usage: 3 files blocks with custom name</h4>
+<div class="codehilite"><pre> <span class="n">E_IO</span> <span class="o">=</span> <span class="n">VTK_WRF_XML</span><span class="p">(</span><span class="n">flist</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;file_1.vts&#39;</span><span class="p">,</span><span class="s1">&#39;file_2.vts&#39;</span><span class="p">,</span><span class="s1">&#39;file_3.vtu&#39;</span><span class="p">],&amp;</span>
+                    <span class="n">nlist</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;block-bar&#39;</span><span class="p">,</span><span class="s1">&#39;block-foo&#39;</span><span class="p">,</span><span class="s1">&#39;block-baz&#39;</span><span class="p">])</span>
 </pre></div>
     
     <br>
