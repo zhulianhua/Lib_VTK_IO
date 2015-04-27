@@ -25,6 +25,9 @@ public:: VTK_CON_XML
 public:: VTK_DAT_XML
 public:: VTK_VAR_XML
 public:: VTK_END_XML
+! functions for VTK XML READ
+public:: VTK_INI_XML_READ
+public:: VTK_END_XML_READ
 ! functions for VTM XML
 public:: VTM_INI_XML
 public:: VTM_BLK_XML
@@ -509,6 +512,214 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
   endsubroutine vtk_update
 
+
+
+!***********************************************************************************************************************************
+! PRIVATE PROCEDURES
+!***********************************************************************************************************************************
+  function adjustlt(string) result(res)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< adjustlt: extension of adjustl to remove tab characters (char(9))
+  !---------------------------------------------------------------------------------------------------------------------------------
+  character(len=*), intent(in) :: string
+  character(len=len(string)) :: res
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  res = string
+  do while ((res(1:1) == char(9) .or. res(1:1) == ' ') .and. len_trim(res)>0)
+    res = res(2:)
+  enddo
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function
+
+  subroutine get_int(buffer, attrib, val, E_IO, case)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< get_int: get in buffer, the value of attribute 'attrib'
+  !---------------------------------------------------------------------------------------------------------------------------------
+  character(len=*), intent(IN)            :: buffer
+  character(len=*), intent(IN)            :: attrib
+  integer(I4P),     intent(OUT)           :: val
+  integer(I4P),     intent(OUT), optional :: E_IO
+  character(len=*), intent(IN),  optional :: case
+  integer :: pos, po2
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = 0_I4P
+  if(present(case)) then
+    if(trim(case)=='lower') then
+      pos = index(buffer, trim(adjustlt(attrib))//'="')+len_trim(adjustlt(attrib))+2
+    else
+      pos = index(buffer, trim(adjustlt(Upper_Case(attrib)))//'="')+len_trim(adjustlt(attrib))+2
+    endif
+  else
+    pos = index(buffer, trim(adjustlt(Upper_Case(attrib)))//'="')+len_trim(adjustlt(attrib))+2
+  endif
+
+    if (pos <= len_trim(adjustlt(attrib))+2) stop 'Attrib not found' !E_IO = -1_I4P
+    po2 = index(buffer(pos:len_trim(buffer)), '"')+pos-2
+    read(buffer(pos:po2),*) val
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end subroutine
+
+ 
+  subroutine get_char(buffer, attrib, val, case)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< get_char: get in buffer, the value of attribute 'attrib'
+  !---------------------------------------------------------------------------------------------------------------------------------
+  character(len=*),              intent(IN)  :: buffer
+  character(len=*),              intent(in)  :: attrib
+  character(len=:), allocatable, intent(OUT) :: val
+  character(len=*), optional,    intent(IN)  :: case
+  integer :: pos, po2
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  if(present(case)) then
+    if(trim(case) == 'lower') then
+      pos = index(buffer, trim(adjustlt(attrib))//'="')+len_trim(adjustlt(attrib))+2
+    else
+      pos = index(buffer, trim(adjustlt(Upper_Case(attrib)))//'="')+len_trim(adjustlt(attrib))+2
+    endif
+  else
+    pos = index(buffer, trim(adjustlt(Upper_Case(attrib)))//'="')+len_trim(adjustlt(attrib))+2
+  endif
+
+  if (pos <= len_trim(adjustlt(attrib))+2) stop 'Attrib not found' !E_IO = -1_I4P
+  po2 = index(buffer(pos:len_trim(buffer)), '"')+pos-2
+  allocate(character(po2-pos+1) :: val)
+  read(buffer(pos:po2),'(a)') val
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end subroutine
+
+
+
+
+  function read_record(buffer, from, cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< read_record: read characters in the unit 'Unit_VTK' from position 'from' to read string 'buffer'
+  !< The read action stops when finding a EOR character (char(10))
+  !---------------------------------------------------------------------------------------------------------------------------------
+  character(len=:), allocatable, intent(OUT) :: buffer   !< String 
+  integer(I4P), intent(IN), optional :: from       !< Offset
+  integer(I4P), intent(IN), optional :: cf         !< Current file index (for concurrent files IO).
+  integer(I4P)                       :: rf       !< Real file index.
+  integer(i4P)                       :: E_IO
+  character                          :: c
+  integer                            :: n, p
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  n = 1
+!  s_buffer = ' '
+  if (present(from)) then
+    p = from
+  else
+    inquire(unit=vtk(rf)%u, iostat=E_IO, pos=p)     
+  end if
+  read(unit=vtk(rf)%u, iostat=E_IO, pos=p) c
+  do while (c /= char(10))
+write (*,'(A)',advance="no") c
+!    s_buffer(n:n) = c 
+    buffer = buffer//c
+    n = n + 1
+    read(unit=vtk(rf)%u, iostat=E_IO) c
+  enddo
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function
+
+
+  function move(inside, to_find, repeat, cf, buffer) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< move: advance in VTK file inside the mark 'inside', until find the mark 'to_find', 'repeat' times
+  !---------------------------------------------------------------------------------------------------------------------------------
+  character(len=*), intent(IN)               :: inside
+  character(len=*), intent(IN)               :: to_find
+  integer,          intent(IN)               :: repeat
+  integer(I4P),     intent(IN), optional     :: cf         !< Current file index (for concurrent files IO).
+  character(len=:), intent(OUT), allocatable :: buffer   !< String 
+  integer(I4P)                               :: E_IO 
+  integer(I4P)                               :: rf         !< Real file index
+  integer(I4P)                               :: n
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  do !search the beginnig of the mark 'inside' 
+    E_IO = read_record(buffer, cf=rf)
+    buffer = trim(adjustlt(Upper_Case(buffer)))
+    if (index(buffer, '<'//trim(adjustlt(Upper_Case(inside)))) > 0) exit !Mark 'inside' founded once
+  enddo
+  n = repeat
+  do !search 'repeat' times the mark 'to_find'
+    E_IO = read_record(buffer, cf=rf)
+    buffer = trim(adjustlt(Upper_Case(buffer)))
+    if (index(buffer, '</'//trim(adjustlt(Upper_Case(inside)))) > 0) E_IO = -1
+    if (index(buffer, '<'//trim(adjustlt(Upper_Case(to_find)))) > 0) n = n - 1 !Mark 'to_find' founded once 
+    if (n == 0) exit !Mark 'to_find' founded 'repeat' times
+  enddo
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function move
+
+
+  function search(buffer, from, inside, to_find, with_attribute, of_value, cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< search: search in VTK file from position 'pos' inside the mark 'inside', until find the mark 'to_find', eventually, having 
+  !< attribute 'with_attribute' matching the value 'of_value'
+  !---------------------------------------------------------------------------------------------------------------------------------
+  character(len=:), intent(INOUT), allocatable :: buffer   !< String 
+  integer(I4P),     intent(IN), optional :: from
+  character(len=*), intent(IN)           :: inside, to_find
+  character(len=*), intent(IN)           :: with_attribute
+  character(len=*), intent(IN)           :: of_value
+  integer(I4P),     intent(IN), optional :: cf         !< Current file index (for concurrent files IO).
+  integer(I4P)                           :: rf         !< Real file index
+  integer(I4P)                           :: E_IO 
+  character(len=:), allocatable :: strng
+  integer(I4P) :: pos
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  pos = 1; if (present(from)) pos = from
+  E_IO = read_record(buffer, from=pos, cf=rf)
+  do !search the beginnig of the mark 'inside' from position 'pos'
+    buffer = trim(adjustlt(Upper_Case(buffer)))
+    if (index(buffer, '<'//trim(adjustlt(Upper_Case(inside)))) > 0) exit !Mark 'inside' founded once
+    E_IO = read_record(buffer)
+    if(E_IO /= 0) return
+  enddo
+  do !search 'repeat' times the mark 'to_find'
+    E_IO = read_record(buffer, cf=rf)
+    buffer = trim(adjustlt(Upper_Case(buffer)))
+    if (index(buffer, '</'//trim(adjustlt(Upper_Case(inside)))) > 0) then
+      E_IO = -1 ! Not found
+      return
+    endif
+    if (index(buffer, '<'//trim(adjustlt(Upper_Case(to_find)))) > 0) then
+      if (len_trim(of_value) == 0) exit !there is no attribute value to seach
+      call get_char(buffer, with_attribute, strng)
+      if (trim(adjustlt(Upper_Case(strng))) == trim(adjustlt(Upper_Case(of_value)))) exit !Attribute match the value
+    end if
+  enddo
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function
+
+
+
+
   ! VTK functions
   function VTK_INI_XML(output_format,filename,mesh_topology,cf,nx1,nx2,ny1,ny2,nz1,nz2) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -639,6 +850,182 @@ contains
   return
   !---------------------------------------------------------------------------------------------------------------------------------
   endfunction VTK_INI_XML
+
+
+!-----------------------------------------------------------------------------------------------------------------------------------
+  function VTK_INI_XML_READ(input_format,filename,mesh_topology,npieces,nx1,nx2,ny1,ny2,nz1,nz2,cf) result(E_IO)
+!  function VTK_INI_XML(output_format,filename,mesh_topology,cf,nx1,nx2,ny1,ny2,nz1,nz2) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Procedure for initializing VTK-XML file when reading.
+  !<
+  !< Supported input formats are (the passed specifier value is case insensitive):
+  !<- ASCII: data are saved in ASCII format; (Not implemented!)
+  !<- BINARY: data are saved in base64 encoded format; (Not tested!)
+  !<- RAW: data are saved in raw-binary format in the appended tag of the XML file; (Not implemented!)
+  !<- BINARY-APPENDED: data are saved in base64 encoded format in the appended tag of the XML file. (Not implemented!)
+  !< Supported topologies are:
+  !<- RectilinearGrid; (Not supported!)
+  !<- StructuredGrid; (Not supported)
+  !<- UnstructuredGrid.
+  !<### Example of usage
+  !<```fortran
+  !< integer(I4P):: nx1,nx2,ny1,ny2,nz1,nz2
+  !< ...
+  !< E_IO = VTK_INI_XML_READ('BINARY','XML_RECT_BINARY.vtr','RectilinearGrid',nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2)
+  !< ...
+  !<```
+  !< Note that the file extension is necessary in the file name. The XML standard has different extensions for each
+  !< different topologies (e.g. *vtr* for rectilinear topology). See the VTK-standard file for more information.
+  !---------------------------------------------------------------------------------------------------------------------------------
+  character(*), intent(IN)            :: input_format   !< input format: ASCII or BINARY
+  character(*), intent(IN)            :: filename       !< file name
+  character(*), intent(IN)            :: mesh_topology  !< mesh topology
+  integer(I4P), intent(OUT), optional :: npieces        !< Number of pieces stored in the file
+  integer(I4P), intent(OUT), optional :: nx1            !< Initial node of x axis.
+  integer(I4P), intent(OUT), optional :: nx2            !< Final node of x axis.
+  integer(I4P), intent(OUT), optional :: ny1            !< Initial node of y axis.
+  integer(I4P), intent(OUT), optional :: ny2            !< Final node of y axis.
+  integer(I4P), intent(OUT), optional :: nz1            !< Initial node of z axis.
+  integer(I4P), intent(OUT), optional :: nz2            !< Final node of z axis.
+  integer(I4P), intent(OUT), optional :: cf             !< Current file index (for concurrent files IO).
+  integer(I4P)                        :: rf             !< Real file index.
+  integer(I4P)                        :: np             !< Real number of pieces.
+  character(len=:),allocatable        :: s_buffer       !< Buffer string.
+  integer(I4P)                        :: E_IO           !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
+  character                           :: c1, c2
+  character(len=:),allocatable        :: aux
+  integer(I4P), dimension(6)          :: rn  !< Real node numbers
+
+  E_IO = -1_I4P
+  if (.not.ir_initialized) call IR_Init
+  if (.not.b64_initialized) call b64_init
+  call vtk_update(act='add',cf=rf,Nvtk=Nvtk,vtk=vtk)
+  f = rf
+  if (present(cf)) cf = rf
+  vtk(rf)%topology = trim(mesh_topology)
+  select case(trim(Upper_Case(input_format)))
+  case('ASCII')
+    vtk(rf)%f = ascii
+
+  case('BINARY')
+    vtk(rf)%f = binary
+    select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid')
+      open(unit=Get_Unit(vtk(rf)%u),file=trim(filename),status='old', &
+           form='UNFORMATTED',access='STREAM',action='READ', &
+           convert='BIG_ENDIAN',iostat=E_IO, position='REWIND')
+
+      ! Get WholeExtent
+      E_IO = move(inside='VTKFile', to_find='RectilinearGrid', repeat=1, cf=rf,buffer=s_buffer)
+      call get_char(buffer=s_buffer, attrib='WholeExtent', val=aux)
+      read(aux,*) rn
+      if(present(nx1)) nx1 = rn(1)
+      if(present(nx2)) nx2 = rn(2)
+      if(present(ny1)) ny1 = rn(3)
+      if(present(ny2)) ny2 = rn(4)
+      if(present(nz1)) nz1 = rn(5)
+      if(present(nz2)) nz2 = rn(6)
+
+      ! count the pieces
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      np = 0
+      do
+        E_IO = read_record(s_buffer, cf=rf)
+        s_buffer = trim(adjustl(Upper_Case(s_buffer)))
+        if (index(s_buffer, '</RECTILINEARGRID') > 0) exit !end of ASCII header section found
+        if (index(s_buffer, '<PIECE') > 0) np = np + 1
+      enddo
+!      ! calculate the offset to reach the appended data
+!      rewind(unit=vtk(rf)%u, iostat=E_IO)
+!      read(unit=vtk(rf)%u,iostat=E_IO) c1
+!      do 
+!        read(unit=vtk(rf)%u,iostat=E_IO) c2
+!        if (iachar(c1)==10 .or. c2 =='_') exit
+!        c1 = c2
+!      enddo
+      inquire(unit=vtk(rf)%u, pos=vtk(rf)%ioffset)
+
+    case('StructuredGrid')
+
+      open(unit=Get_Unit(vtk(rf)%u),file=trim(filename),status='old', &
+           form='UNFORMATTED',access='STREAM',action='READ', &
+           convert='BIG_ENDIAN',iostat=E_IO, position='REWIND')
+
+      ! Get WholeExtent
+      E_IO = move(inside='VTKFile', to_find='StructuredGrid', repeat=1, cf=rf,buffer=s_buffer)
+      call get_char(buffer=s_buffer, attrib='WholeExtent', val=aux); read(aux,*) rn
+      if(present(nx1)) nx1 = rn(1)
+      if(present(nx2)) nx2 = rn(2)
+      if(present(ny1)) ny1 = rn(3)
+      if(present(ny2)) ny2 = rn(4)
+      if(present(nz1)) nz1 = rn(5)
+      if(present(nz2)) nz2 = rn(6)
+
+      ! count the pieces
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      np = 0
+      do
+        E_IO = read_record(s_buffer, cf=rf)
+        s_buffer = trim(adjustl(Upper_Case(s_buffer)))
+        if (index(s_buffer, '</STRUCTUREDGRID') > 0) exit !end of ASCII header section found
+        if (index(s_buffer, '<PIECE') > 0) np = np + 1
+      enddo
+!      ! calculate the offset to reach the appended data
+!      rewind(unit=vtk(rf)%u, iostat=E_IO)
+!      read(unit=vtk(rf)%u,iostat=E_IO) c1
+!      do 
+!        read(unit=vtk(rf)%u,iostat=E_IO) c2
+!        if (iachar(c1)==10 .or. c2 =='_') exit
+!        c1 = c2
+!      enddo
+    case('UnstructuredGrid')    
+      open(unit=Get_Unit(vtk(rf)%u),file=trim(filename),status='old', &
+           form='UNFORMATTED',access='STREAM',action='READ', &
+           convert='BIG_ENDIAN',iostat=E_IO, position='REWIND')
+      ! count the pieces
+      np = 0
+      do
+        E_IO = read_record(s_buffer, cf=rf)
+        s_buffer = trim(adjustl(Upper_Case(s_buffer)))
+        if (index(s_buffer, '</UNSTRUCTUREDGRID') > 0) exit !end of ASCII header section found
+        if (index(s_buffer, '<PIECE') > 0) np = np + 1
+      enddo
+!      ! calculate the offset to reach the appended data
+!      rewind(unit=vtk(rf)%u, iostat=E_IO)
+!      read(unit=vtk(rf)%u,iostat=E_IO) c1
+!      do 
+!        read(unit=vtk(rf)%u,iostat=E_IO) c2
+!        if (iachar(c1)==10 .or. c2 =='_') exit
+!        c1 = c2
+!      enddo
+      inquire(unit=vtk(rf)%u, pos=vtk(rf)%ioffset)
+    end select
+  end select  
+  if(present(npieces)) npieces = np
+  end function VTK_INI_XML_READ
+
+
+
+  function VTK_END_XML_READ(cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for close an opened VTK file.
+  !---------------------------------------------------------------------------------------------------------------------------------
+  integer(I4P), optional :: cf
+  integer(I4P) :: rf
+  integer(I4P) :: E_IO 
+
+
+  rf = f 
+  if (present(cf)) rf = cf
+  
+  select case(vtk(rf)%f)
+  case(ascii)
+    stop 'Not implemented'
+  case(binary)
+    close(unit=vtk(rf)%u, iostat=E_IO)
+  end select
+  end function
+
 
   function VTK_FLD_XML_OC(fld_action,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
