@@ -1,5 +1,9 @@
 <a name="top"></a>
 
+**Note:** This is a fork from [Lib_VTK_IO](https://github.com/szaghi/Lib_VTK_IO), made by [Stefano Zaghi](https://github.com/szaghi). 
+The main purpose of this fork is to add reading capabilities to the library by taking as starting point the previous work of [Francisco Pena](http://sourceforge.net/u/franpena/profile).
+
+
 # Lib\_VTK\_IO [![GitHub tag](https://img.shields.io/github/tag/szaghi/Lib_VTK_IO.svg)]()
 
 [![License](https://img.shields.io/badge/license-GNU%20GeneraL%20Public%20License%20v3%20,%20GPLv3-blue.svg)]()
