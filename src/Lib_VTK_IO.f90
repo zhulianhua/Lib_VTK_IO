@@ -617,7 +617,7 @@ contains
     rf = cf ; f = cf
   endif
   n = 1
-!  s_buffer = ' '
+  buffer = ''
   if (present(from)) then
     p = from
   else
