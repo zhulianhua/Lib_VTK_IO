@@ -684,8 +684,8 @@ contains
   !< move: advance in VTK file inside the mark 'inside', until find the mark 'to_find', 'repeat' times
   !---------------------------------------------------------------------------------------------------------------------------------
   character(len=*),              intent(IN)  :: inside     !< XML element where to search 'to_find'
-  character(len=*),              intent(IN)  :: to_find    !< Searched XML element
-  integer,                       intent(IN)  :: repeat     !< Number of repetitions
+  character(len=*), optional,    intent(IN)  :: to_find    !< Searched XML element
+  integer,          optional,    intent(IN)  :: repeat     !< Number of repetitions
   integer(I4P),     optional,    intent(IN)  :: cf         !< Current file index (for concurrent files IO).
   character(len=:), allocatable, intent(OUT) :: buffer     !< String 
   integer(I4P)                               :: E_IO 
@@ -698,19 +698,23 @@ contains
   if (present(cf)) then
     rf = cf ; f = cf
   endif
+
   do !search the beginnig of the mark 'inside' 
     E_IO = read_record(buffer, cf=rf)
     buffer = trim(adjustlt(Upper_Case(buffer)))
     if (index(buffer, '<'//trim(adjustlt(Upper_Case(inside)))) > 0) exit !Mark 'inside' founded once
   enddo
-  n = repeat
-  do !search 'repeat' times the mark 'to_find'
-    E_IO = read_record(buffer, cf=rf)
-    buffer = trim(adjustlt(Upper_Case(buffer)))
-    if (index(buffer, '</'//trim(adjustlt(Upper_Case(inside)))) > 0) E_IO = -1
-    if (index(buffer, '<'//trim(adjustlt(Upper_Case(to_find)))) > 0) n = n - 1 !Mark 'to_find' founded once 
-    if (n == 0) exit !Mark 'to_find' founded 'repeat' times
-  enddo
+
+  if(present(to_find)) then
+    n = 1; if(present(repeat)) n = repeat
+    do !search 'repeat' times the mark 'to_find'
+      E_IO = read_record(buffer, cf=rf)
+      buffer = trim(adjustlt(Upper_Case(buffer)))
+      if (index(buffer, '</'//trim(adjustlt(Upper_Case(inside)))) > 0) E_IO = -1
+      if (index(buffer, '<'//trim(adjustlt(Upper_Case(to_find)))) > 0) n = n - 1 !Mark 'to_find' founded once 
+      if (n == 0) exit !Mark 'to_find' founded 'repeat' times
+    enddo
+  endif
   !---------------------------------------------------------------------------------------------------------------------------------
   end function move
 
@@ -6417,7 +6421,7 @@ contains
         select case(trim(vtk(rf)%topology))
           case('RectilinearGrid', 'StructuredGrid')
             ! Get WholeExtent
-            E_IO = move(inside='VTKFile', to_find=trim(vtk(rf)%topology), repeat=1, cf=rf,buffer=s_buffer)
+            E_IO = move(inside='VTKFile', to_find=trim(vtk(rf)%topology), cf=rf,buffer=s_buffer)
             call get_char(buffer=s_buffer, attrib='WholeExtent', val=aux, E_IO=E_IO)
             if(E_IO == 0) then
               read(aux,*) rn
@@ -6488,11 +6492,28 @@ contains
         open(unit=Get_Unit(vtk(rf)%u),file=trim(filename),status='old', &
              form='UNFORMATTED',access='STREAM',action='READ', &
              iostat=E_IO, position='REWIND')
+        E_IO = move(inside='VTKFile', cf=rf, buffer=s_buffer)
+        call get_char(buffer=s_buffer, attrib='byte_order', val=aux, E_IO=E_IO)
+
+        ! Check the file endianness
+        if (index(trim(aux), 'LITTLEENDIAN') > 0) then
+          close(unit=vtk(rf)%u, iostat=E_IO)
+          open(unit=Get_Unit(vtk(rf)%u),file=trim(filename),status='old', &
+               form='UNFORMATTED',access='STREAM',action='READ', &
+               convert='LITTLE_ENDIAN', iostat=E_IO, position='REWIND')
+        elseif (index(trim(aux), 'BIGENDIAN') > 0) then
+          close(unit=vtk(rf)%u, iostat=E_IO)
+          open(unit=Get_Unit(vtk(rf)%u),file=trim(filename),status='old', &
+               form='UNFORMATTED',access='STREAM',action='READ', &
+               convert='BIG_ENDIAN', iostat=E_IO, position='REWIND')
+        else
+          rewind(unit=vtk(rf)%u, iostat=E_IO)
+        endif
 
         select case(trim(vtk(rf)%topology))
           case('RectilinearGrid', 'StructuredGrid')
             ! Get WholeExtent
-            E_IO = move(inside='VTKFile', to_find=trim(vtk(rf)%topology), repeat=1, cf=rf,buffer=s_buffer)
+            E_IO = move(inside='VTKFile', to_find=trim(vtk(rf)%topology), cf=rf,buffer=s_buffer)
             call get_char(buffer=s_buffer, attrib='WholeExtent', val=aux, E_IO=E_IO)
             if(E_IO == 0) then
               read(aux,*) rn
