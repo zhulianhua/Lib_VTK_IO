@@ -325,17 +325,17 @@ interface VTK_GEO_XML_READ
   !< Procedure for reading mesh with different topologies in VTK-XML standard.
   !<
   !< VTK_GEO_XML_READ is an interface to 15 different functions; there are 2 functions for each of 3 topologies supported and a function
-  !< for closing XML pieces: one function for mesh coordinates with R8P (Ok!) precision and one for mesh coordinates with R4P (Not implemented!) precision.
-  !< 1D/3D-rank arrays and packed API for any kinds
+  !< for closing XML pieces: one function for mesh coordinates with R8P (Ok!) precision and one for mesh coordinates with R4P (Not tested!) precision.
+  !< 1D/3D-rank arrays and packed API for ascii and raw data, binary is not implemented yet!
   !<
   !<- For StructuredGrid there are 4 functions for each real kinds:
-  !<    - inputs are 1D-rank arrays: X[1:NN],Y[1:NN],Z[1:NN]; (Not implemented!)
-  !<    - inputs are 3D-rank arrays: X[nx1:nx2,ny1:ny2,nz1:nz2],Y[nx1:nx2,ny1:ny2,nz1:nz2],Z[nx1:nx2,ny1:ny2,nz1:nz2]; (Not implemented!)
-  !<    - input is 1D-rank array (packed API): XYZ[1:3,1:NN]; (Not implemented!)
-  !<    - input is 3D-rank array (packed API): XYZ[1:3,nx1:nx2,ny1:ny2,nz1:nz2]. (Not implemented!)
+  !<    - inputs are 1D-rank arrays: X[1:NN],Y[1:NN],Z[1:NN]; (Not tested!)
+  !<    - inputs are 3D-rank arrays: X[nx1:nx2,ny1:ny2,nz1:nz2],Y[nx1:nx2,ny1:ny2,nz1:nz2],Z[nx1:nx2,ny1:ny2,nz1:nz2]; (Not tested!)
+  !<    - input is 1D-rank array (packed API): XYZ[1:3,1:NN]; (Not tested!)
+  !<    - input is 3D-rank array (packed API): XYZ[1:3,nx1:nx2,ny1:ny2,nz1:nz2]. (Not tested!)
   !<- For UnStructuredGrid there are 2 functions for each real kinds:
   !<    - inputs are 1D arrays: X[1:NN],Y[1:NN],Z[1:NN]; (Ok!)
-  !<    - input is 1D array (packed API): XYZ[1:3,1:NN]. (Not implemented!)
+  !<    - input is 1D array (packed API): XYZ[1:3,1:NN]. (Not tested!)
   !<
   !< VTK_GEO_XML_READ must be called after VTK_INI_XML_READ. It reads the mesh geometry. The inputs that must be passed
   !< change depending on the topologies chosen. Not all VTK topologies have been implemented (*polydata* topologies are absent).
@@ -6405,7 +6405,41 @@ contains
   select case(trim(Upper_Case(input_format)))
   case('ASCII')
     vtk(rf)%f = ascii
-! Not implemented
+
+    select case(trim(vtk(rf)%topology))
+      case('RectilinearGrid', 'StructuredGrid', 'UnstructuredGrid')
+
+        open(unit=Get_Unit(vtk(rf)%u),file=trim(filename),status='old', &
+             form='UNFORMATTED',access='STREAM',action='READ', &
+             iostat=E_IO, position='REWIND')
+
+        select case(trim(vtk(rf)%topology))
+          case('RectilinearGrid', 'StructuredGrid')
+            ! Get WholeExtent
+            E_IO = move(inside='VTKFile', to_find=trim(vtk(rf)%topology), repeat=1, cf=rf,buffer=s_buffer)
+            call get_char(buffer=s_buffer, attrib='WholeExtent', val=aux, E_IO=E_IO)
+            if(E_IO == 0) then
+              read(aux,*) rn
+              if(present(nx1)) nx1 = rn(1)
+              if(present(nx2)) nx2 = rn(2)
+              if(present(ny1)) ny1 = rn(3)
+              if(present(ny2)) ny2 = rn(4)
+              if(present(nz1)) nz1 = rn(5)
+              if(present(nz2)) nz2 = rn(6)
+            endif
+        end select
+
+        ! count the pieces
+        rewind(unit=vtk(rf)%u, iostat=E_IO)
+        np = 0
+        do
+          E_IO = read_record(s_buffer, cf=rf)
+          s_buffer = trim(adjustl(Upper_Case(s_buffer)))
+          if (index(s_buffer, '</'//trim(Upper_Case(vtk(rf)%topology))) > 0) exit !end of ASCII header section found
+          if (index(s_buffer, '<PIECE') > 0) np = np + 1
+        enddo
+
+    end select
 
   case('BINARY')
     vtk(rf)%f = binary
@@ -6512,7 +6546,7 @@ contains
   character(len=:),allocatable        :: s_buffer !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
-!  character(len=:), allocatable       :: bindata
+  character(len=:), allocatable       :: data
   integer(I4P)                        :: np, i, offs, N_Byte
   !---------------------------------------------------------------------------------------------------------------------------------
 
@@ -6526,7 +6560,25 @@ contains
   select case(vtk(rf)%f)         
 
     case(ascii)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
+        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                      buffer=s_buffer,content=data)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+          E_IO = -1_I4P 
+        else
+          allocate(X(NN), Y(NN), Z(NN), stat=E_IO)
+          read(data, fmt=*, iostat=E_IO) (X(i), Y(i), Z(i), i=1,NN) !get ascii array
+        endif
+        if(allocated(data)) deallocate(data)
+      endif
 
     case(binary)
 ! not implemented
@@ -6564,7 +6616,6 @@ contains
       E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
       call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
       if(E_IO == 0) then
-        allocate(X(NN), Y(NN), Z(NN), stat=E_IO)
         call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
         E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
         call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
@@ -6574,6 +6625,7 @@ contains
             trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
           E_IO = -1_I4P 
         else
+          allocate(X(NN), Y(NN), Z(NN), stat=E_IO)
           read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, (X(i), Y(i), Z(i), i=1,NN) !get appended array
         endif
       endif
@@ -6598,7 +6650,7 @@ contains
   character(len=:),allocatable        :: s_buffer !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
-!  character(len=:), allocatable       :: bindata
+  character(len=:), allocatable       :: data
   integer(I4P)                        :: np, i, offs, N_Byte
   !---------------------------------------------------------------------------------------------------------------------------------
 
@@ -6612,7 +6664,25 @@ contains
   select case(vtk(rf)%f)         
 
     case(ascii)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
+        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                      buffer=s_buffer,content=data)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+          E_IO = -1_I4P 
+        else
+          allocate(X(NN), Y(NN), Z(NN), stat=E_IO)
+          read(data, fmt=*, iostat=E_IO) (X(i), Y(i), Z(i), i=1,NN) !get ascii array
+        endif
+        if(allocated(data)) deallocate(data)
+      endif
 
     case(binary)
 ! not implemented
@@ -6623,7 +6693,6 @@ contains
       E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
       call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
       if(E_IO == 0) then
-        allocate(X(NN), Y(NN), Z(NN), stat=E_IO)
         call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
         E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
         call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
@@ -6633,6 +6702,7 @@ contains
             trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
           E_IO = -1_I4P 
         else
+          allocate(X(NN), Y(NN), Z(NN), stat=E_IO)
           read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, (X(i), Y(i), Z(i), i=1,NN) !get appended array
         endif
       endif
@@ -6654,7 +6724,7 @@ contains
   character(len=:),allocatable        :: s_buffer !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
-!  character(len=:), allocatable       :: bindata
+  character(len=:), allocatable       :: data
   integer(I4P)                        :: np, i, j, offs, N_Byte
   !---------------------------------------------------------------------------------------------------------------------------------
 
@@ -6668,7 +6738,25 @@ contains
   select case(vtk(rf)%f)         
 
     case(ascii)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
+        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                      buffer=s_buffer,content=data)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+          E_IO = -1_I4P 
+        else
+          allocate(XYZ(3,NN), stat=E_IO)
+          read(data, fmt=*, iostat=E_IO) ((XYZ(i,j),i=1,3),j=1,NN) !get ascii array
+        endif
+        if(allocated(data)) deallocate(data)
+      endif
 
     case(binary)
 ! not implemented
@@ -6679,7 +6767,6 @@ contains
       E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
       call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
       if(E_IO == 0) then
-        allocate(XYZ(3,NN), stat=E_IO)
         call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
         E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
         call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
@@ -6689,6 +6776,7 @@ contains
             trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
           E_IO = -1_I4P 
         else
+          allocate(XYZ(3,NN), stat=E_IO)
           read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, ((XYZ(i,j),i=1,3),j=1,NN) !get appended array
         endif
       endif
@@ -6711,7 +6799,7 @@ contains
   character(len=:),allocatable        :: s_buffer !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
-!  character(len=:), allocatable       :: bindata
+  character(len=:), allocatable       :: data
   integer(I4P)                        :: np, i, j, offs, N_Byte
   !---------------------------------------------------------------------------------------------------------------------------------
 
@@ -6725,7 +6813,25 @@ contains
   select case(vtk(rf)%f)         
 
     case(ascii)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
+        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                      buffer=s_buffer,content=data)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+          E_IO = -1_I4P 
+        else
+          allocate(XYZ(3,NN), stat=E_IO)
+          read(data, fmt=*, iostat=E_IO) ((XYZ(i,j),i=1,3),j=1,NN) !get ascii array
+        endif
+        if(allocated(data)) deallocate(data)
+      endif
 
     case(binary)
 ! not implemented
@@ -6736,7 +6842,6 @@ contains
       E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
       call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
       if(E_IO == 0) then
-        allocate(XYZ(3,NN), stat=E_IO)
         call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
         E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
         call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
@@ -6746,6 +6851,7 @@ contains
             trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
           E_IO = -1_I4P 
         else
+          allocate(XYZ(3,NN), stat=E_IO)
           read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, ((XYZ(i,j),i=1,3),j=1,NN) !get appended array
         endif
       endif
@@ -6776,7 +6882,7 @@ contains
   character(len=:),allocatable        :: aux      !< Auxiliary string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
-!  character(len=:), allocatable       :: bindata
+  character(len=:), allocatable       :: data
   integer(I4P)                        :: np, i, offs, N_Byte
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -6791,7 +6897,28 @@ contains
   select case(vtk(rf)%f)         
 
     case(ascii)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+            E_IO = -1_I4P 
+          else
+            allocate(X(NN), Y(NN), Z(NN), stat=E_IO) 
+            read(data, fmt=*, iostat=E_IO) (X(i), Y(i), Z(i), i=1,NN) !get ascii array
+          endif
+          if(allocated(data)) deallocate(data)
+        endif
+      endif
 
     case(binary)
 ! not implemented
@@ -6805,7 +6932,6 @@ contains
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          allocate(X(NN), Y(NN), Z(NN), stat=E_IO)        
           E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
@@ -6814,6 +6940,7 @@ contains
               trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
             E_IO = -1_I4P 
           else
+            allocate(X(NN), Y(NN), Z(NN), stat=E_IO)        
             read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, (X(i), Y(i), Z(i), i=1,NN) !get appended array
           endif
         endif
@@ -6845,7 +6972,7 @@ contains
   character(len=:),allocatable        :: aux      !< Auxiliary string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
-!  character(len=:), allocatable       :: bindata
+  character(len=:), allocatable       :: data
   integer(I4P)                        :: np, i, offs, N_Byte
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -6860,7 +6987,28 @@ contains
   select case(vtk(rf)%f)         
 
     case(ascii)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+            E_IO = -1_I4P 
+          else
+            allocate(X(NN), Y(NN), Z(NN), stat=E_IO) 
+            read(data, fmt=*, iostat=E_IO) (X(i), Y(i), Z(i), i=1,NN) !get ascii array
+          endif
+          if(allocated(data)) deallocate(data)
+        endif
+      endif
 
     case(binary)
 ! not implemented
@@ -6874,7 +7022,6 @@ contains
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          allocate(X(NN), Y(NN), Z(NN), stat=E_IO)        
           E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
@@ -6883,6 +7030,7 @@ contains
               trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
             E_IO = -1_I4P 
           else
+            allocate(X(NN), Y(NN), Z(NN), stat=E_IO)        
             read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, (X(i), Y(i), Z(i), i=1,NN) !get appended array
           endif
         endif
@@ -6912,7 +7060,7 @@ contains
   character(len=:),allocatable        :: aux      !< Auxiliary string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
-!  character(len=:), allocatable       :: bindata
+  character(len=:), allocatable       :: data
   integer(I4P)                        :: np, i, j, offs, N_Byte
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -6927,7 +7075,28 @@ contains
   select case(vtk(rf)%f)         
 
     case(ascii)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+            E_IO = -1_I4P 
+          else
+            allocate(XYZ(3,NN), stat=E_IO)  
+            read(data, fmt=*, iostat=E_IO) ((XYZ(i,j),i=1,3),j=1,NN) !get ascii array
+          endif
+          if(allocated(data)) deallocate(data)
+        endif
+      endif
 
     case(binary)
 ! not implemented
@@ -6941,7 +7110,6 @@ contains
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          allocate(XYZ(3,NN), stat=E_IO)        
           E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
@@ -6950,6 +7118,7 @@ contains
               trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
             E_IO = -1_I4P 
           else
+            allocate(XYZ(3,NN), stat=E_IO)        
             read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, ((XYZ(i,j),i=1,3),j=1,NN) !get appended array
           endif
         endif
@@ -6979,7 +7148,7 @@ contains
   character(len=:),allocatable        :: aux      !< Auxiliary string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
-!  character(len=:), allocatable       :: bindata
+  character(len=:), allocatable       :: data
   integer(I4P)                        :: np, i, j, offs, N_Byte
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -6994,7 +7163,28 @@ contains
   select case(vtk(rf)%f)         
 
     case(ascii)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+            E_IO = -1_I4P 
+          else
+            allocate(XYZ(3,NN), stat=E_IO)  
+            read(data, fmt=*, iostat=E_IO) ((XYZ(i,j),i=1,3),j=1,NN) !get ascii array
+          endif
+          if(allocated(data)) deallocate(data)
+        endif
+      endif
 
     case(binary)
 ! not implemented
@@ -7008,7 +7198,6 @@ contains
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          allocate(XYZ(3,NN), stat=E_IO)        
           E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
@@ -7017,6 +7206,7 @@ contains
               trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
             E_IO = -1_I4P 
           else
+            allocate(XYZ(3,NN), stat=E_IO)        
             read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, ((XYZ(i,j),i=1,3),j=1,NN) !get appended array
           endif
         endif
@@ -7048,7 +7238,7 @@ contains
   character(len=:),allocatable        :: aux      !< Auxiliary string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
-!  character(len=:), allocatable       :: bindata
+  character(len=:), allocatable       :: data
   integer(I4P)                        :: np, i, j, k, offs, N_Byte
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7063,7 +7253,28 @@ contains
   select case(vtk(rf)%f)         
 
     case(ascii)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+            E_IO = -1_I4P 
+          else
+            allocate(X(nx1:nx2,ny1:ny2,nz1:nz2), Y(nx1:nx2,ny1:ny2,nz1:nz2), Z(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)        
+            read(data, fmt=*, iostat=E_IO) (((X(i,j,k),Y(i,j,k),Z(i,j,k),i=nx1,nx2),j=ny1,ny2),k=nz1,nz2) !get ascii array
+          endif
+          if(allocated(data)) deallocate(data)
+        endif
+      endif
 
     case(binary)
 ! not implemented
@@ -7077,7 +7288,6 @@ contains
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          allocate(X(nx1:nx2,ny1:ny2,nz1:nz2), Y(nx1:nx2,ny1:ny2,nz1:nz2), Z(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)        
           E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
@@ -7086,6 +7296,7 @@ contains
               trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
             E_IO = -1_I4P 
           else
+            allocate(X(nx1:nx2,ny1:ny2,nz1:nz2), Y(nx1:nx2,ny1:ny2,nz1:nz2), Z(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)        
             read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, &
                 (((X(i,j,k),Y(i,j,k),Z(i,j,k),i=nx1,nx2),j=ny1,ny2),k=nz1,nz2) !get appended array
           endif
@@ -7118,7 +7329,7 @@ contains
   character(len=:),allocatable        :: aux      !< Auxiliary string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
-!  character(len=:), allocatable       :: bindata
+  character(len=:), allocatable       :: data
   integer(I4P)                        :: np, i, j, k, offs, N_Byte
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7133,7 +7344,28 @@ contains
   select case(vtk(rf)%f)         
 
     case(ascii)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+            E_IO = -1_I4P 
+          else
+            allocate(X(nx1:nx2,ny1:ny2,nz1:nz2), Y(nx1:nx2,ny1:ny2,nz1:nz2), Z(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)        
+            read(data, fmt=*, iostat=E_IO) (((X(i,j,k),Y(i,j,k),Z(i,j,k),i=nx1,nx2),j=ny1,ny2),k=nz1,nz2) !get ascii array
+          endif
+          if(allocated(data)) deallocate(data)
+        endif
+      endif
 
     case(binary)
 ! not implemented
@@ -7147,7 +7379,6 @@ contains
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          allocate(X(nx1:nx2,ny1:ny2,nz1:nz2), Y(nx1:nx2,ny1:ny2,nz1:nz2), Z(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)        
           E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
@@ -7156,6 +7387,7 @@ contains
               trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
             E_IO = -1_I4P 
           else
+            allocate(X(nx1:nx2,ny1:ny2,nz1:nz2), Y(nx1:nx2,ny1:ny2,nz1:nz2), Z(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)        
             read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, &
                 (((X(i,j,k),Y(i,j,k),Z(i,j,k),i=nx1,nx2),j=ny1,ny2),k=nz1,nz2) !get appended array
           endif
@@ -7185,7 +7417,7 @@ contains
   character(len=:),allocatable        :: aux      !< Auxiliary string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
-!  character(len=:), allocatable       :: bindata
+  character(len=:), allocatable       :: data
   integer(I4P)                        :: np, i, j, k, l, offs, N_Byte
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7200,7 +7432,28 @@ contains
   select case(vtk(rf)%f)         
 
     case(ascii)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+            E_IO = -1_I4P 
+          else
+            allocate(XYZ(3,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)      
+            read(data, fmt=*, iostat=E_IO) ((((XYZ(i,j,k,l),i=1,3),j=nx1,nx2),k=ny1,ny2),l=nz1,nz2) !get ascii array
+          endif
+          if(allocated(data)) deallocate(data)
+        endif
+      endif
 
     case(binary)
 ! not implemented
@@ -7214,15 +7467,15 @@ contains
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          allocate(XYZ(3,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)        
           E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
             E_IO = -1_I4P 
           else
+            allocate(XYZ(3,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)        
             read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, &
                 ((((XYZ(i,j,k,l),i=1,3),j=nx1,nx2),k=ny1,ny2),l=nz1,nz2) !get appended array
           endif
@@ -7253,7 +7506,7 @@ contains
   character(len=:),allocatable        :: aux      !< Auxiliary string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
-!  character(len=:), allocatable       :: bindata
+  character(len=:), allocatable       :: data
   integer(I4P)                        :: np, i, j, k, l, offs, N_Byte
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7268,7 +7521,29 @@ contains
   select case(vtk(rf)%f)         
 
     case(ascii)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+            E_IO = -1_I4P 
+          else
+            allocate(XYZ(3,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)      
+            read(data, fmt=*, iostat=E_IO) ((((XYZ(i,j,k,l),i=1,3),j=nx1,nx2),k=ny1,ny2),l=nz1,nz2) !get ascii array
+          endif
+          if(allocated(data)) deallocate(data)
+        endif
+      endif
+
 
     case(binary)
 ! not implemented
@@ -7282,7 +7557,6 @@ contains
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          allocate(XYZ(3,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)        
           E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
@@ -7291,6 +7565,7 @@ contains
               trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
             E_IO = -1_I4P 
           else
+            allocate(XYZ(3,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)        
             read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, &
                 ((((XYZ(i,j,k,l),i=1,3),j=nx1,nx2),k=ny1,ny2),l=nz1,nz2) !get appended array
           endif
@@ -7319,11 +7594,11 @@ contains
   integer(I4P)                        :: E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf       !< Real file index.
   character(len=:),allocatable        :: s_buffer !< Buffer string.
-  integer(I4P)                        :: NNp      !< number of nodes in the piece
+  integer(I4P)                        :: NN       !< number of nodes in the piece
   character(len=:),allocatable        :: aux      !< Auxiliary string.
-  character(len=:), allocatable       :: fmtX, fmtY, fmtZ
-  character(len=:), allocatable       :: typeX, typeY, typeZ
-!  character(len=:), allocatable       :: bindata
+  character(len=:), allocatable       :: fmt, fmtX, fmtY, fmtZ
+  character(len=:), allocatable       :: type, typeX, typeY, typeZ
+  character(len=:), allocatable       :: data
   integer(I4P)                        :: offsX, offsY, offsZ
   integer(I4P)                        :: np, i, N_Byte
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7338,7 +7613,50 @@ contains
   select case(vtk(rf)%f)         
 
     case(ascii)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='RectilinearGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+            E_IO = -1_I4P 
+          else
+            allocate(X(NN), stat=E_IO)
+            read(data, fmt=*, iostat=E_IO) (X(i), i=1,NN) !get X ascii array
+          endif
+          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+            E_IO = -1_I4P 
+          else
+            allocate(Y(NN), stat=E_IO)
+            read(data, fmt=*, iostat=E_IO) (Y(i), i=1,NN) !get Y ascii array
+          endif
+          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+            E_IO = -1_I4P 
+          else
+            allocate(Z(NN), stat=E_IO)
+            read(data, fmt=*, iostat=E_IO) (Z(i), i=1,NN) !get Z ascii array
+          endif
+          if(allocated(data)) deallocate(data)
+        endif
+      endif
 
     case(binary)
 ! not implemented
@@ -7351,8 +7669,7 @@ contains
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
-          NNp = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          allocate(X(NNp), Y(NNp), Z(NNp), stat=E_IO)        
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)        
           E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offsX, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmtX,  E_IO=E_IO)
@@ -7373,12 +7690,10 @@ contains
               trim(adjustlt(Upper_Case(typeZ)))/='FLOAT32') then
             E_IO = -1_I4P 
           else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsX) N_Byte, (X(i), i=1,NNp) !get appended array
-            print*, N_Byte
-            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsX) N_Byte, (Y(i), i=1,NNp) !get appended array
-            print*, N_Byte
-            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsX) N_Byte, (Z(i), i=1,NNp) !get appended array
-            print*, N_Byte
+            allocate(X(NN), Y(NN), Z(NN), stat=E_IO)
+            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsX) N_Byte, (X(i), i=1,NN) !get appended array
+            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsY) N_Byte, (Y(i), i=1,NN) !get appended array
+            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsZ) N_Byte, (Z(i), i=1,NN) !get appended array
           endif
         endif
       endif
@@ -7405,11 +7720,11 @@ contains
   integer(I4P)                        :: E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf       !< Real file index.
   character(len=:),allocatable        :: s_buffer !< Buffer string.
-  integer(I4P)                        :: NNp      !< number of nodes in the piece
+  integer(I4P)                        :: NN       !< number of nodes in the piece
   character(len=:),allocatable        :: aux      !< Auxiliary string.
-  character(len=:), allocatable       :: fmtX, fmtY, fmtZ
-  character(len=:), allocatable       :: typeX, typeY, typeZ
-!  character(len=:), allocatable       :: bindata
+  character(len=:), allocatable       :: fmt, fmtX, fmtY, fmtZ
+  character(len=:), allocatable       :: type, typeX, typeY, typeZ
+  character(len=:), allocatable       :: data
   integer(I4P)                        :: offsX, offsY, offsZ
   integer(I4P)                        :: np, i, N_Byte
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7424,7 +7739,51 @@ contains
   select case(vtk(rf)%f)         
 
     case(ascii)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='RectilinearGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+            E_IO = -1_I4P 
+          else
+            allocate(X(NN), stat=E_IO)
+            read(data, fmt=*, iostat=E_IO) (X(i), i=1,NN) !get X ascii array
+          endif
+          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+            E_IO = -1_I4P 
+          else
+            allocate(Y(NN), stat=E_IO)
+            read(data, fmt=*, iostat=E_IO) (Y(i), i=1,NN) !get Y ascii array
+          endif
+          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+            E_IO = -1_I4P 
+          else
+            allocate(Z(NN), stat=E_IO)
+            read(data, fmt=*, iostat=E_IO) (Z(i), i=1,NN) !get Z ascii array
+          endif
+          if(allocated(data)) deallocate(data)
+        endif
+      endif
+
 
     case(binary)
 ! not implemented
@@ -7437,8 +7796,7 @@ contains
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
-          NNp = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          allocate(X(NNp), Y(NNp), Z(NNp), stat=E_IO)        
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
           E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offsX, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmtX,  E_IO=E_IO)
@@ -7459,11 +7817,12 @@ contains
               trim(adjustlt(Upper_Case(typeZ)))/='FLOAT64') then
             E_IO = -1_I4P 
           else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsX) N_Byte, (X(i), i=1,NNp) !get appended array
+            allocate(X(NN), Y(NN), Z(NN), stat=E_IO)        
+            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsX) N_Byte, (X(i), i=1,NN) !get appended array
             print*, N_Byte
-            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsX) N_Byte, (Y(i), i=1,NNp) !get appended array
+            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsY) N_Byte, (Y(i), i=1,NN) !get appended array
             print*, N_Byte
-            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsX) N_Byte, (Z(i), i=1,NNp) !get appended array
+            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsZ) N_Byte, (Z(i), i=1,NN) !get appended array
             print*, N_Byte
           endif
         endif
