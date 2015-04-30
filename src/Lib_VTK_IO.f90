@@ -28,6 +28,7 @@ public:: VTK_END_XML
 ! functions for VTK XML READ
 public:: VTK_INI_XML_READ
 public:: VTK_GEO_XML_READ
+public:: VTK_CON_XML_READ
 public:: VTK_END_XML_READ
 ! functions for VTM XML
 public:: VTM_INI_XML
@@ -6547,7 +6548,7 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, offs, N_Byte
+  integer(I4P)                        :: np, i, offs, N_Byte, pos
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -6563,10 +6564,11 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
       if(E_IO == 0) then
         call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
-        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+        E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
                       buffer=s_buffer,content=data)
         call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
         call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -6614,10 +6616,12 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
       if(E_IO == 0) then
         call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
-        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
+        E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                      buffer=s_buffer)
         call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
         call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
         call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -6651,7 +6655,7 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, offs, N_Byte
+  integer(I4P)                        :: np, i, offs, N_Byte, pos
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -6667,10 +6671,11 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
       if(E_IO == 0) then
         call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
-        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+        E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
                       buffer=s_buffer,content=data)
         call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
         call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -6691,10 +6696,12 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
       if(E_IO == 0) then
         call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
-        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
+        E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                      buffer=s_buffer)
         call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
         call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
         call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -6725,7 +6732,7 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, offs, N_Byte
+  integer(I4P)                        :: np, i, j, offs, N_Byte, pos
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -6741,10 +6748,11 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
       if(E_IO == 0) then
         call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
-        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+        E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
                       buffer=s_buffer,content=data)
         call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
         call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -6765,10 +6773,12 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
       if(E_IO == 0) then
         call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
-        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
+        E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                      buffer=s_buffer)
         call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
         call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
         call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -6800,7 +6810,7 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, offs, N_Byte
+  integer(I4P)                        :: np, i, j, offs, N_Byte, pos
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -6816,10 +6826,11 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
       if(E_IO == 0) then
         call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
-        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+        E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
                       buffer=s_buffer,content=data)
         call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
         call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -6840,10 +6851,12 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
       if(E_IO == 0) then
         call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
-        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
+        E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                      buffer=s_buffer)
         call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
         call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
         call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -6883,7 +6896,7 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, offs, N_Byte
+  integer(I4P)                        :: np, i, offs, N_Byte, pos
 
   !---------------------------------------------------------------------------------------------------------------------------------
 
@@ -6900,12 +6913,13 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -6927,12 +6941,14 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -6973,7 +6989,7 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, offs, N_Byte
+  integer(I4P)                        :: np, i, offs, N_Byte, pos
 
   !---------------------------------------------------------------------------------------------------------------------------------
 
@@ -6990,12 +7006,13 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -7017,12 +7034,14 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -7061,7 +7080,7 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, offs, N_Byte
+  integer(I4P)                        :: np, i, j, offs, N_Byte, pos
 
   !---------------------------------------------------------------------------------------------------------------------------------
 
@@ -7078,12 +7097,13 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -7105,12 +7125,14 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -7149,7 +7171,7 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, offs, N_Byte
+  integer(I4P)                        :: np, i, j, offs, N_Byte, pos
 
   !---------------------------------------------------------------------------------------------------------------------------------
 
@@ -7166,12 +7188,13 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -7193,12 +7216,14 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -7239,7 +7264,7 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, k, offs, N_Byte
+  integer(I4P)                        :: np, i, j, k, offs, N_Byte, pos
 
   !---------------------------------------------------------------------------------------------------------------------------------
 
@@ -7256,12 +7281,13 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -7283,12 +7309,14 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -7330,7 +7358,7 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, k, offs, N_Byte
+  integer(I4P)                        :: np, i, j, k, offs, N_Byte, pos 
 
   !---------------------------------------------------------------------------------------------------------------------------------
 
@@ -7347,12 +7375,13 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -7374,12 +7403,14 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -7418,7 +7449,7 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, k, l, offs, N_Byte
+  integer(I4P)                        :: np, i, j, k, l, offs, N_Byte, pos
 
   !---------------------------------------------------------------------------------------------------------------------------------
 
@@ -7435,12 +7466,13 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -7462,12 +7494,13 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -7507,7 +7540,7 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, k, l, offs, N_Byte
+  integer(I4P)                        :: np, i, j, k, l, offs, N_Byte, pos
 
   !---------------------------------------------------------------------------------------------------------------------------------
 
@@ -7524,12 +7557,13 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -7552,12 +7586,13 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
@@ -7600,7 +7635,7 @@ contains
   character(len=:), allocatable       :: type, typeX, typeY, typeZ
   character(len=:), allocatable       :: data
   integer(I4P)                        :: offsX, offsY, offsZ
-  integer(I4P)                        :: np, i, N_Byte
+  integer(I4P)                        :: np, i, N_Byte, pos
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7616,12 +7651,13 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='RectilinearGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', &
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
@@ -7632,7 +7668,7 @@ contains
             allocate(X(NN), stat=E_IO)
             read(data, fmt=*, iostat=E_IO) (X(i), i=1,NN) !get X ascii array
           endif
-          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', &
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
@@ -7643,7 +7679,7 @@ contains
             allocate(Y(NN), stat=E_IO)
             read(data, fmt=*, iostat=E_IO) (Y(i), i=1,NN) !get Y ascii array
           endif
-          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', &
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
@@ -7665,20 +7701,21 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='RectilinearGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)        
-          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', buffer=s_buffer)
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offsX, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmtX,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type',   val=typeX, E_IO=E_IO)
-          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', buffer=s_buffer)
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offsY, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmtY,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type',   val=typeY, E_IO=E_IO)
-          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', buffer=s_buffer)
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offsZ, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmtZ,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type',   val=typeZ, E_IO=E_IO)
@@ -7726,7 +7763,7 @@ contains
   character(len=:), allocatable       :: type, typeX, typeY, typeZ
   character(len=:), allocatable       :: data
   integer(I4P)                        :: offsX, offsY, offsZ
-  integer(I4P)                        :: np, i, N_Byte
+  integer(I4P)                        :: np, i, N_Byte, pos
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7742,12 +7779,13 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='RectilinearGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', &
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
@@ -7758,7 +7796,7 @@ contains
             allocate(X(NN), stat=E_IO)
             read(data, fmt=*, iostat=E_IO) (X(i), i=1,NN) !get X ascii array
           endif
-          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', &
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
@@ -7769,7 +7807,7 @@ contains
             allocate(Y(NN), stat=E_IO)
             read(data, fmt=*, iostat=E_IO) (Y(i), i=1,NN) !get Y ascii array
           endif
-          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', &
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
@@ -7792,20 +7830,21 @@ contains
 
       rewind(unit=vtk(rf)%u, iostat=E_IO)
       E_IO = move(inside='RectilinearGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
           NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
-          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', buffer=s_buffer)
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offsX, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmtX,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type',   val=typeX, E_IO=E_IO)
-          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', buffer=s_buffer)
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offsY, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmtY,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type',   val=typeY, E_IO=E_IO)
-          E_IO = search(inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', buffer=s_buffer)
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offsZ, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmtZ,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type',   val=typeZ, E_IO=E_IO)
@@ -7830,6 +7869,131 @@ contains
     end select
   !---------------------------------------------------------------------------------------------------------------------------------
   end function VTK_GEO_XML_RECT_R8_READ
+
+
+  function VTK_CON_XML_READ(NC,connect,offset,cell_type, npiece, cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for reading mesh connectivity.
+  !<
+  !< Function that **must** be used when unstructured grid is used, it reads the connectivity of the unstructured grid.
+  !< @note The vector **connect** follows the VTK-XML standard. 
+  !<
+  !< The function VTK_CON_XML does not calculate the connectivity and offset vectors: it reads the connectivity and offset
+  !< vectors conforming the VTK-XML standard, but does not calculate them.
+  !< The vector variable *cell\_type* must conform the VTK-XML standard (see the file VTK-Standard at the
+  !< Kitware homepage) that is the same of the legacy standard. It contains the
+  !< *type* of each cells. 
+  !---------------------------------------------------------------------------------------------------------------------------------
+  integer(I4P),              intent(OUT) :: NC           !< number of cells
+  integer(I4P), allocatable, intent(OUT) :: connect(:)   !< mesh connectivity
+  integer(I4P), allocatable, intent(OUT) :: offset(:)    !< cell offset
+  integer(I1P), allocatable, intent(OUT) :: cell_type(:) !< VTK cell type
+  integer(I4P), optional,    intent(IN)  :: npiece       !< Number of the piece to read (by default: 1)
+  integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
+  integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
+  integer(I4P)                           :: rf           !< Real file index.
+  character(len=:), allocatable          :: s_buffer     !< Buffer string.
+  character(len=:), allocatable          :: fmt
+  integer                                :: np, pos, offs
+  integer(I4P)                           :: N_Byte
+  character(len=:), allocatable          :: data
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------  
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  np = 1_I4P; if (present(npiece)) np = npiece
+  E_IO = -1_I4P
+  select case(vtk(rf)%f)         
+
+    case(ascii)
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
+      call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
+      ! get appended array offsets
+      allocate(offset(NC), stat=E_IO)
+      E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Offsets', &
+                    buffer=s_buffer, content=data)
+      call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='ASCII') then
+        E_IO = -1_I4P
+      else
+        read(data, fmt=*, iostat=E_IO) offset !get appended array connect
+        ! get appended array cell_type
+        allocate(cell_type(NC), stat=E_IO)
+        E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Types', &
+                      buffer=s_buffer, content=data)
+        call get_int(buffer=s_buffer,attrib='offset', val=offs, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII') then
+          E_IO = -1_I4P
+        else
+          read(data, fmt=*, iostat=E_IO) cell_type !get appended array connect
+          ! get appended array connect
+          allocate(connect(offset(NC)), stat=E_IO)
+          E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Connectivity', &
+                        buffer=s_buffer, content=data)
+          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII') then
+            E_IO = -1_I4P
+          else
+            read(data, fmt=*, iostat=E_IO) connect 
+          endif
+        endif
+        if(allocated(data)) deallocate(data)
+      endif
+
+    case(binary)
+! Not implemented
+
+    case(raw)
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
+      call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
+      ! get appended array offsets
+      allocate(offset(NC), stat=E_IO)
+      E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Offsets', &
+                    buffer=s_buffer)
+      call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED') then
+        E_IO = -1_I4P
+      else
+        read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, offset !get appended array connect
+        ! get appended array cell_type
+        allocate(cell_type(NC), stat=E_IO)
+        E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Types', &
+                      buffer=s_buffer)
+        call get_int(buffer=s_buffer,attrib='offset', val=offs, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED') then
+          E_IO = -1_I4P
+        else
+          read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, cell_type !get appended array connect
+          ! get appended array connect
+          allocate(connect(offset(NC)), stat=E_IO)
+          E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Connectivity', &
+                        buffer=s_buffer)
+          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED') then
+            E_IO = -1_I4P
+          else
+            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, connect 
+          endif
+        endif
+      endif
+
+  end select
+  !---------------------------------------------------------------------------------------------------------------------------------
+end function
 
 
   function VTK_END_XML_READ(cf) result(E_IO)
