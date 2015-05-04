@@ -786,6 +786,7 @@ contains
     rf = cf ; f = cf
   endif
   pos = 1; if (present(from)) pos = from
+  if(present(content)) content = ''
   E_IO = read_record(buffer, from=pos, cf=rf)
   do !search the beginnig of the mark 'inside' from position 'pos'
     buffer = trim(adjustlt(Upper_Case(buffer)))
@@ -804,9 +805,7 @@ contains
       if (len_trim(of_value) == 0) exit !there is no attribute value to seach
       call get_char(buffer, with_attribute, strng, E_IO=E_IO)
       if (E_IO==0 .and. trim(adjustlt(Upper_Case(strng))) == trim(adjustlt(Upper_Case(of_value)))) then  !Attribute match the value
-        if (present(content) .and. index(buffer, '/>') == 0 .and. &
-          index(buffer, '</'//trim(adjustlt(Upper_Case(to_find)))) == 0) then
-          content=''
+        if (index(buffer, '/>') == 0 .and. index(buffer, '</'//trim(adjustlt(Upper_Case(to_find)))) == 0) then
           do
             E_IO = read_record(strng, cf=rf)
             if (index(trim(adjustlt(Upper_Case(strng))), '</'//trim(adjustlt(Upper_Case(to_find)))) > 0) exit
@@ -8177,7 +8176,6 @@ end function
   integer(I4P), optional, intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                        :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf           !< Real file index.
-  character(len=:), allocatable       :: s_buffer     !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
@@ -8214,7 +8212,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
             E_IO = -1_I4P
@@ -8243,7 +8240,6 @@ end function
   integer(I4P), optional, intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                        :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf           !< Real file index.
-  character(len=:), allocatable       :: s_buffer     !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
@@ -8280,7 +8276,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
             E_IO = -1_I4P
@@ -8309,7 +8304,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -8346,7 +8340,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT64') then
             E_IO = -1_I4P
@@ -8375,7 +8368,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -8412,7 +8404,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT32') then
             E_IO = -1_I4P
@@ -8441,7 +8432,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -8478,7 +8468,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT16') then
             E_IO = -1_I4P
@@ -8507,7 +8496,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -8544,7 +8532,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT8') then
             E_IO = -1_I4P
@@ -8575,7 +8562,6 @@ end function
   integer(I4P), optional, intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                        :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf           !< Real file index.
-  character(len=:), allocatable       :: s_buffer     !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
@@ -8613,7 +8599,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
             E_IO = -1_I4P
@@ -8644,7 +8629,6 @@ end function
   integer(I4P), optional, intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                        :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf           !< Real file index.
-  character(len=:), allocatable       :: s_buffer     !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
@@ -8682,7 +8666,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
             E_IO = -1_I4P
@@ -8713,7 +8696,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -8751,7 +8733,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT64') then
             E_IO = -1_I4P
@@ -8782,7 +8763,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -8820,7 +8800,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT32') then
             E_IO = -1_I4P
@@ -8851,7 +8830,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -8889,7 +8867,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT16') then
             E_IO = -1_I4P
@@ -8920,7 +8897,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -8958,7 +8934,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT8') then
             E_IO = -1_I4P
@@ -8987,7 +8962,6 @@ end function
   integer(I4P), optional, intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                        :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf           !< Real file index.
-  character(len=:), allocatable       :: s_buffer     !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
@@ -9024,7 +8998,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
             E_IO = -1_I4P
@@ -9053,7 +9026,6 @@ end function
   integer(I4P), optional, intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                        :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf           !< Real file index.
-  character(len=:), allocatable       :: s_buffer     !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
@@ -9090,7 +9062,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
             E_IO = -1_I4P
@@ -9119,7 +9090,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -9156,7 +9126,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT64') then
             E_IO = -1_I4P
@@ -9185,7 +9154,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -9222,7 +9190,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT32') then
             E_IO = -1_I4P
@@ -9251,7 +9218,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -9288,7 +9254,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT16') then
             E_IO = -1_I4P
@@ -9317,7 +9282,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -9354,7 +9318,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT8') then
             E_IO = -1_I4P
@@ -9383,7 +9346,6 @@ end function
   integer(I4P), optional, intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                        :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf           !< Real file index.
-  character(len=:), allocatable       :: s_buffer     !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
@@ -9423,7 +9385,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
             E_IO = -1_I4P
@@ -9452,7 +9413,6 @@ end function
   integer(I4P), optional, intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                        :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf           !< Real file index.
-  character(len=:), allocatable       :: s_buffer     !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
@@ -9492,7 +9452,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
             E_IO = -1_I4P
@@ -9521,7 +9480,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -9561,7 +9519,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT64') then
             E_IO = -1_I4P
@@ -9590,7 +9547,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -9630,7 +9586,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT32') then
             E_IO = -1_I4P
@@ -9659,7 +9614,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -9699,7 +9653,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT16') then
             E_IO = -1_I4P
@@ -9728,7 +9681,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -9768,7 +9720,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT8') then
             E_IO = -1_I4P
@@ -9799,7 +9750,6 @@ end function
   integer(I4P), optional, intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                        :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf           !< Real file index.
-  character(len=:), allocatable       :: s_buffer     !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
@@ -9843,7 +9793,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
             E_IO = -1_I4P
@@ -9875,7 +9824,6 @@ end function
   integer(I4P), optional, intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                        :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf           !< Real file index.
-  character(len=:), allocatable       :: s_buffer     !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
@@ -9919,7 +9867,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
             E_IO = -1_I4P
@@ -9951,7 +9898,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -9995,7 +9941,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT64') then
             E_IO = -1_I4P
@@ -10027,7 +9972,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -10071,7 +10015,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT32') then
             E_IO = -1_I4P
@@ -10103,7 +10046,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -10147,7 +10089,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT16') then
             E_IO = -1_I4P
@@ -10179,7 +10120,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -10223,7 +10163,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT8') then
             E_IO = -1_I4P
@@ -10253,7 +10192,6 @@ end function
   integer(I4P), optional, intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                        :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf           !< Real file index.
-  character(len=:), allocatable       :: s_buffer     !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
@@ -10294,7 +10232,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
             E_IO = -1_I4P
@@ -10323,7 +10260,6 @@ end function
   integer(I4P), optional, intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                        :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf           !< Real file index.
-  character(len=:), allocatable       :: s_buffer     !< Buffer string.
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
@@ -10364,7 +10300,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
             E_IO = -1_I4P
@@ -10393,7 +10328,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -10434,7 +10368,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT64') then
             E_IO = -1_I4P
@@ -10463,7 +10396,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -10504,7 +10436,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT32') then
             E_IO = -1_I4P
@@ -10533,7 +10464,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -10574,7 +10504,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT16') then
             E_IO = -1_I4P
@@ -10603,7 +10532,6 @@ end function
   integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
   integer(I4P)                           :: E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                           :: rf           !< Real file index.
-  character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
@@ -10644,7 +10572,6 @@ end function
 
       case(raw)
         if(E_IO == 0) then
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(type)))/='INT8') then
             E_IO = -1_I4P
