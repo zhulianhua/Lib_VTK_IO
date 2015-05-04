@@ -7686,7 +7686,6 @@ contains
   integer(I4P)                        :: E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf       !< Real file index.
   character(len=:),allocatable        :: s_buffer !< Buffer string.
-  integer(I4P)                        :: NN       !< number of nodes in the piece
   character(len=:),allocatable        :: aux      !< Auxiliary string.
   character(len=:), allocatable       :: fmt, fmtX, fmtY, fmtZ
   character(len=:), allocatable       :: type, typeX, typeY, typeZ
@@ -7713,7 +7712,6 @@ contains
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
-          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
           E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
@@ -7722,8 +7720,8 @@ contains
               trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
             E_IO = -1_I4P 
           else
-            allocate(X(NN), stat=E_IO)
-            read(data, fmt=*, iostat=E_IO) (X(i), i=1,NN) !get X ascii array
+            allocate(X(nx1:nx2), stat=E_IO)
+            read(data, fmt=*, iostat=E_IO) (X(i), i=nx1,nx2) !get X ascii array
           endif
           E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', &
                         buffer=s_buffer,content=data)
@@ -7733,8 +7731,8 @@ contains
               trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
             E_IO = -1_I4P 
           else
-            allocate(Y(NN), stat=E_IO)
-            read(data, fmt=*, iostat=E_IO) (Y(i), i=1,NN) !get Y ascii array
+            allocate(Y(ny1:ny2), stat=E_IO)
+            read(data, fmt=*, iostat=E_IO) (Y(i), i=ny1,ny2) !get Y ascii array
           endif
           E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', &
                         buffer=s_buffer,content=data)
@@ -7744,8 +7742,8 @@ contains
               trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
             E_IO = -1_I4P 
           else
-            allocate(Z(NN), stat=E_IO)
-            read(data, fmt=*, iostat=E_IO) (Z(i), i=1,NN) !get Z ascii array
+            allocate(Z(nz1:nz2), stat=E_IO)
+            read(data, fmt=*, iostat=E_IO) (Z(i), i=nz1,nz2) !get Z ascii array
           endif
           if(allocated(data)) deallocate(data)
         endif
@@ -7763,7 +7761,6 @@ contains
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
-          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)        
           E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offsX, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmtX,  E_IO=E_IO)
@@ -7784,10 +7781,10 @@ contains
               trim(adjustlt(Upper_Case(typeZ)))/='FLOAT32') then
             E_IO = -1_I4P 
           else
-            allocate(X(NN), Y(NN), Z(NN), stat=E_IO)
-            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsX) N_Byte, (X(i), i=1,NN) !get appended array
-            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsY) N_Byte, (Y(i), i=1,NN) !get appended array
-            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsZ) N_Byte, (Z(i), i=1,NN) !get appended array
+            allocate(X(nx1:nx2), Y(ny1:ny2), Z(nz1:nz2), stat=E_IO)
+            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsX) N_Byte, (X(i), i=nx1,nx2) !get appended array
+            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsY) N_Byte, (Y(i), i=ny1,ny2) !get appended array
+            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsZ) N_Byte, (Z(i), i=nz1,nz2) !get appended array
           endif
         endif
       endif
@@ -7814,7 +7811,6 @@ contains
   integer(I4P)                        :: E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   integer(I4P)                        :: rf       !< Real file index.
   character(len=:),allocatable        :: s_buffer !< Buffer string.
-  integer(I4P)                        :: NN       !< number of nodes in the piece
   character(len=:),allocatable        :: aux      !< Auxiliary string.
   character(len=:), allocatable       :: fmt, fmtX, fmtY, fmtZ
   character(len=:), allocatable       :: type, typeX, typeY, typeZ
@@ -7841,7 +7837,6 @@ contains
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
-          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
           E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', &
                         buffer=s_buffer,content=data)
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
@@ -7850,8 +7845,8 @@ contains
               trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
             E_IO = -1_I4P 
           else
-            allocate(X(NN), stat=E_IO)
-            read(data, fmt=*, iostat=E_IO) (X(i), i=1,NN) !get X ascii array
+            allocate(X(nx1:nx2), stat=E_IO)
+            read(data, fmt=*, iostat=E_IO) (X(i), i=nx1,nx2) !get X ascii array
           endif
           E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', &
                         buffer=s_buffer,content=data)
@@ -7861,8 +7856,8 @@ contains
               trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
             E_IO = -1_I4P 
           else
-            allocate(Y(NN), stat=E_IO)
-            read(data, fmt=*, iostat=E_IO) (Y(i), i=1,NN) !get Y ascii array
+            allocate(Y(ny1:ny2), stat=E_IO)
+            read(data, fmt=*, iostat=E_IO) (Y(i), i=ny1,ny2) !get Y ascii array
           endif
           E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', &
                         buffer=s_buffer,content=data)
@@ -7872,8 +7867,8 @@ contains
               trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
             E_IO = -1_I4P 
           else
-            allocate(Z(NN), stat=E_IO)
-            read(data, fmt=*, iostat=E_IO) (Z(i), i=1,NN) !get Z ascii array
+            allocate(Z(nz1:nz2), stat=E_IO)
+            read(data, fmt=*, iostat=E_IO) (Z(i), i=nz1,nz2) !get Z ascii array
           endif
           if(allocated(data)) deallocate(data)
         endif
@@ -7892,7 +7887,6 @@ contains
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
         if(E_IO == 0) then      
-          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
           E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', buffer=s_buffer)
           call get_int(buffer=s_buffer,  attrib='offset', val=offsX, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmtX,  E_IO=E_IO)
@@ -7913,13 +7907,10 @@ contains
               trim(adjustlt(Upper_Case(typeZ)))/='FLOAT64') then
             E_IO = -1_I4P 
           else
-            allocate(X(NN), Y(NN), Z(NN), stat=E_IO)        
-            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsX) N_Byte, (X(i), i=1,NN) !get appended array
-            print*, N_Byte
-            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsY) N_Byte, (Y(i), i=1,NN) !get appended array
-            print*, N_Byte
-            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsZ) N_Byte, (Z(i), i=1,NN) !get appended array
-            print*, N_Byte
+            allocate(X(nx1:nx2), Y(ny1:ny2), Z(nz1:nz2), stat=E_IO)        
+            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsX) N_Byte, (X(i), i=nx1,nx2) !get appended array
+            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsY) N_Byte, (Y(i), i=ny1,ny2) !get appended array
+            read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offsZ) N_Byte, (Z(i), i=nz1,nz2) !get appended array
           endif
         endif
       endif
@@ -8107,6 +8098,7 @@ end function
   character(len=:), allocatable              :: s_buffer     !< Buffer string.
   character(len=:), allocatable              :: aux
   integer(I4P)                               :: np, pos, of
+  integer(I4P)                               :: x1,x2,y1,y2,z1,z2
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -8128,8 +8120,11 @@ end function
         case('RectilinearGrid','StructuredGrid')
           call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
           if(E_IO == 0) then      
-            read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2   
-            NC_NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+            read(aux,*, iostat=E_IO) x1,x2,y1,y2,z1,z2   
+            NC_NN = (x2-x1+1)*(y2-y1+1)*(z2-z1+1)
+            if(present(nx1)) nx1=x1; if(present(nx2)) nx2=x2
+            if(present(ny1)) ny1=y1; if(present(ny2)) ny2=y2
+            if(present(nz1)) nz1=z1; if(present(nz2)) nz2=z2
           endif
         case('UnstructuredGrid')
           call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NC_NN, E_IO=E_IO)
@@ -8143,8 +8138,11 @@ end function
         case('RectilinearGrid','StructuredGrid')
           call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
           if(E_IO == 0) then      
-            read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
-            NC_NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+            read(aux,*, iostat=E_IO) x1,x2,y1,y2,z1,z2   
+            NC_NN = (x2-x1+1)*(y2-y1+1)*(z2-z1+1)
+            if(present(nx1)) nx1=x1; if(present(nx2)) nx2=x2
+            if(present(ny1)) ny1=y1; if(present(ny2)) ny2=y2
+            if(present(nz1)) nz1=z1; if(present(nz2)) nz2=z2
           endif
         case('UnstructuredGrid')
           call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC_NN, E_IO=E_IO)
