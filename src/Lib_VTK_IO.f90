@@ -29,6 +29,7 @@ public:: VTK_END_XML
 public:: VTK_INI_XML_READ
 public:: VTK_GEO_XML_READ
 public:: VTK_CON_XML_READ
+public:: VTK_VAR_XML_READ
 public:: VTK_END_XML_READ
 ! functions for VTM XML
 public:: VTM_INI_XML
@@ -358,6 +359,47 @@ interface VTK_GEO_XML_READ
                    VTK_GEO_XML_UNST_R8_READ,VTK_GEO_XML_UNST_PACK_R4_READ,     &! real(R8P) UnstructuredGrid, standard and packed API
                    VTK_GEO_XML_UNST_R4_READ,VTK_GEO_XML_UNST_PACK_R8_READ       ! real(R4P) UnstructuredGrid, standard and packed API
 endinterface
+interface VTK_VAR_XML_READ
+  !< Procedure for reading data variable(s) in VTK-XML standard.
+  !<
+  !< VTK_VAR_XML is an interface to 36 different functions, there are 6 functions for scalar variables, 6 functions for vectorial
+  !< variables and 6 functions for 3D(or higher) vectorial variables: for all of types the precision can be R8P, R4P, I8P, I4P, I2P
+  !< and I1P. This function saves the data variables related (cell-centered or node-centered) to geometric mesh.
+  !< 1D/3D-rank arrays and packed API for any kinds
+  !< The output arrays can be passed as 1D-rank or 3D-rank and the vectorial variables can be component-separated (one for each of
+  !< the 3 components) or packed into one multidimensional array:
+  !<
+  !<- scalar output:
+  !<    - output is 1D-rank array: var[1:NC_NN];
+  !<    - output is 3D-rank array: var[nx1:nx2,ny1:ny2,nz1:nz2];
+  !<- vectorial output:
+  !<    - output are 1D-rank arrays: varX[1:NC_NN],varY[1:NC_NN],varZ[1:NC_NN];
+  !<    - output are 3D-rank arrays: varX[nx1:nx2,ny1:ny2,nz1:nz2],varY[nx1:nx2,ny1:ny2,nz1:nz2],varX[nx1:nx2,ny1:ny2,nz1:nz2];
+  !<- 3D(or higher) vectorial inputs:
+  !<    - output is 1D-rank (packed API): var[1:N_COL,1:NC_NN];
+  !<    - output is 3D-rank (packed API): var[1:N_COL,nx1:nx2,ny1:ny2,nz1:nz2].
+  !<
+  !< @note Note that the output that must be passed change depending on the data variables type.
+  module procedure VTK_VAR_XML_SCAL_1DA_R8_READ,&!VTK_VAR_XML_SCAL_3DA_R8, & ! real(R8P)    scalar    1D/3D array
+                   VTK_VAR_XML_SCAL_1DA_R4,&!VTK_VAR_XML_SCAL_3DA_R4, & ! real(R4P)    scalar    1D/3D array
+                   VTK_VAR_XML_SCAL_1DA_I8,&!VTK_VAR_XML_SCAL_3DA_I8, & ! integer(I8P) scalar    1D/3D array
+                   VTK_VAR_XML_SCAL_1DA_I4,&!VTK_VAR_XML_SCAL_3DA_I4, & ! integer(I4P) scalar    1D/3D array
+                   VTK_VAR_XML_SCAL_1DA_I2,&!VTK_VAR_XML_SCAL_3DA_I2, & ! integer(I2P) scalar    1D/3D array
+                   VTK_VAR_XML_SCAL_1DA_I1!,VTK_VAR_XML_SCAL_3DA_I1, & ! integer(I1P) scalar    1D/3D array
+!                   VTK_VAR_XML_VECT_1DA_R8,VTK_VAR_XML_VECT_3DA_R8, & ! real(R8P)    vectorial 1D/3D arrays
+!                   VTK_VAR_XML_VECT_1DA_R4,VTK_VAR_XML_VECT_3DA_R4, & ! real(R4P)    vectorial 1D/3D arrays
+!                   VTK_VAR_XML_VECT_1DA_I8,VTK_VAR_XML_VECT_3DA_I8, & ! integer(I8P) vectorial 1D/3D arrays
+!                   VTK_VAR_XML_VECT_1DA_I4,VTK_VAR_XML_VECT_3DA_I4, & ! integer(I4P) vectorial 1D/3D arrays
+!                   VTK_VAR_XML_VECT_1DA_I2,VTK_VAR_XML_VECT_3DA_I2, & ! integer(I2P) vectorial 1D/3D arrays
+!                   VTK_VAR_XML_VECT_1DA_I1,VTK_VAR_XML_VECT_3DA_I1, & ! integer(I1P) vectorial 1D/3D arrays
+!                   VTK_VAR_XML_LIST_1DA_R8,VTK_VAR_XML_LIST_3DA_R8, & ! real(R8P)    list      1D/3D array
+!                   VTK_VAR_XML_LIST_1DA_R4,VTK_VAR_XML_LIST_3DA_R4, & ! real(R4P)    list      1D/3D array
+!                   VTK_VAR_XML_LIST_1DA_I8,VTK_VAR_XML_LIST_3DA_I8, & ! integer(I4P) list      1D/3D array
+!                   VTK_VAR_XML_LIST_1DA_I4,VTK_VAR_XML_LIST_3DA_I4, & ! integer(I4P) list      1D/3D array
+!                   VTK_VAR_XML_LIST_1DA_I2,VTK_VAR_XML_LIST_3DA_I2, & ! integer(I2P) list      1D/3D array
+!                   VTK_VAR_XML_LIST_1DA_I1,VTK_VAR_XML_LIST_3DA_I1    ! integer(I1P) list      1D/3D array
+endinterface
+
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -668,7 +710,7 @@ contains
     inquire(unit=vtk(rf)%u, iostat=E_IO, pos=p)     
   end if
   read(unit=vtk(rf)%u, iostat=E_IO, pos=p) c
-  do while (c /= char(10))
+  do while (c /= end_rec)
 !write (*,'(A)',advance="no") c
 !    s_buffer(n:n) = c 
     buffer = buffer//c
@@ -6425,12 +6467,9 @@ contains
             call get_char(buffer=s_buffer, attrib='WholeExtent', val=aux, E_IO=E_IO)
             if(E_IO == 0) then
               read(aux,*) rn
-              if(present(nx1)) nx1 = rn(1)
-              if(present(nx2)) nx2 = rn(2)
-              if(present(ny1)) ny1 = rn(3)
-              if(present(ny2)) ny2 = rn(4)
-              if(present(nz1)) nz1 = rn(5)
-              if(present(nz2)) nz2 = rn(6)
+              if(present(nx1)) nx1 = rn(1); if(present(nx2)) nx2 = rn(2)
+              if(present(ny1)) ny1 = rn(3); if(present(ny2)) ny2 = rn(4)
+              if(present(nz1)) nz1 = rn(5); if(present(nz2)) nz2 = rn(6)
             endif
         end select
 
@@ -6517,12 +6556,9 @@ contains
             call get_char(buffer=s_buffer, attrib='WholeExtent', val=aux, E_IO=E_IO)
             if(E_IO == 0) then
               read(aux,*) rn
-              if(present(nx1)) nx1 = rn(1)
-              if(present(nx2)) nx2 = rn(2)
-              if(present(ny1)) ny1 = rn(3)
-              if(present(ny2)) ny2 = rn(4)
-              if(present(nz1)) nz1 = rn(5)
-              if(present(nz2)) nz2 = rn(6)
+              if(present(nx1)) nx1 = rn(1); if(present(nx2)) nx2 = rn(2)
+              if(present(ny1)) ny1 = rn(3); if(present(ny2)) ny2 = rn(4)
+              if(present(nz1)) nz1 = rn(5); if(present(nz2)) nz2 = rn(6)
             endif
         end select
 
@@ -7915,9 +7951,10 @@ contains
   integer(I4P)                           :: rf           !< Real file index.
   character(len=:), allocatable          :: s_buffer     !< Buffer string.
   character(len=:), allocatable          :: fmt
+  character(len=:), allocatable          :: type
+  character(len=:), allocatable          :: data
   integer                                :: np, pos, offs
   integer(I4P)                           :: N_Byte
-  character(len=:), allocatable          :: data
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------  
@@ -7938,9 +7975,10 @@ contains
       allocate(offset(NC), stat=E_IO)
       E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Offsets', &
                     buffer=s_buffer, content=data)
-      call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
       call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
-      if (trim(adjustlt(Upper_Case(fmt)))/='ASCII') then
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT32') then
         E_IO = -1_I4P
       else
         read(data, fmt=*, iostat=E_IO) offset !get appended array connect
@@ -7948,9 +7986,10 @@ contains
         allocate(cell_type(NC), stat=E_IO)
         E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Types', &
                       buffer=s_buffer, content=data)
-        call get_int(buffer=s_buffer,attrib='offset', val=offs, E_IO=E_IO)
         call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII') then
+        call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT8') then
           E_IO = -1_I4P
         else
           read(data, fmt=*, iostat=E_IO) cell_type !get appended array connect
@@ -7958,9 +7997,10 @@ contains
           allocate(connect(offset(NC)), stat=E_IO)
           E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Connectivity', &
                         buffer=s_buffer, content=data)
-          call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
-          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII') then
+          call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+              trim(adjustlt(Upper_Case(type)))/='INT32') then
             E_IO = -1_I4P
           else
             read(data, fmt=*, iostat=E_IO) connect 
@@ -7984,7 +8024,9 @@ contains
                     buffer=s_buffer)
       call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
       call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
-      if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED') then
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT32') then
         E_IO = -1_I4P
       else
         read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, offset !get appended array connect
@@ -7994,7 +8036,9 @@ contains
                       buffer=s_buffer)
         call get_int(buffer=s_buffer,attrib='offset', val=offs, E_IO=E_IO)
         call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
-        if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED') then
+        call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT8') then
           E_IO = -1_I4P
         else
           read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, cell_type !get appended array connect
@@ -8004,7 +8048,9 @@ contains
                         buffer=s_buffer)
           call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED') then
+          call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+              trim(adjustlt(Upper_Case(type)))/='INT32') then
             E_IO = -1_I4P
           else
             read(unit=vtk(rf)%u, iostat=E_IO, pos = vtk(rf)%ioffset+offs) N_Byte, connect 
@@ -8015,6 +8061,672 @@ contains
   end select
   !---------------------------------------------------------------------------------------------------------------------------------
 end function
+
+!  module procedure VTK_VAR_XML_SCAL_1DA_R8,VTK_VAR_XML_SCAL_3DA_R8, & ! real(R8P)    scalar    1D/3D array
+!                   VTK_VAR_XML_SCAL_1DA_R4,VTK_VAR_XML_SCAL_3DA_R4, & ! real(R4P)    scalar    1D/3D array
+!                   VTK_VAR_XML_SCAL_1DA_I8,VTK_VAR_XML_SCAL_3DA_I8, & ! integer(I8P) scalar    1D/3D array
+!                   VTK_VAR_XML_SCAL_1DA_I4,VTK_VAR_XML_SCAL_3DA_I4, & ! integer(I4P) scalar    1D/3D array
+!                   VTK_VAR_XML_SCAL_1DA_I2,VTK_VAR_XML_SCAL_3DA_I2, & ! integer(I2P) scalar    1D/3D array
+!                   VTK_VAR_XML_SCAL_1DA_I1,VTK_VAR_XML_SCAL_3DA_I1, & ! integer(I1P) scalar    1D/3D array
+!                   VTK_VAR_XML_VECT_1DA_R8,VTK_VAR_XML_VECT_3DA_R8, & ! real(R8P)    vectorial 1D/3D arrays
+!                   VTK_VAR_XML_VECT_1DA_R4,VTK_VAR_XML_VECT_3DA_R4, & ! real(R4P)    vectorial 1D/3D arrays
+!                   VTK_VAR_XML_VECT_1DA_I8,VTK_VAR_XML_VECT_3DA_I8, & ! integer(I8P) vectorial 1D/3D arrays
+!                   VTK_VAR_XML_VECT_1DA_I4,VTK_VAR_XML_VECT_3DA_I4, & ! integer(I4P) vectorial 1D/3D arrays
+!                   VTK_VAR_XML_VECT_1DA_I2,VTK_VAR_XML_VECT_3DA_I2, & ! integer(I2P) vectorial 1D/3D arrays
+!                   VTK_VAR_XML_VECT_1DA_I1,VTK_VAR_XML_VECT_3DA_I1, & ! integer(I1P) vectorial 1D/3D arrays
+!                   VTK_VAR_XML_LIST_1DA_R8,VTK_VAR_XML_LIST_3DA_R8, & ! real(R8P)    list      1D/3D array
+!                   VTK_VAR_XML_LIST_1DA_R4,VTK_VAR_XML_LIST_3DA_R4, & ! real(R4P)    list      1D/3D array
+!                   VTK_VAR_XML_LIST_1DA_I8,VTK_VAR_XML_LIST_3DA_I8, & ! integer(I4P) list      1D/3D array
+!                   VTK_VAR_XML_LIST_1DA_I4,VTK_VAR_XML_LIST_3DA_I4, & ! integer(I4P) list      1D/3D array
+!                   VTK_VAR_XML_LIST_1DA_I2,VTK_VAR_XML_LIST_3DA_I2, & ! integer(I2P) list      1D/3D array
+!                   VTK_VAR_XML_LIST_1DA_I1,VTK_VAR_XML_LIST_3DA_I1    ! integer(I1P) list      1D/3D array
+!-----------------------------------------------------------------------------------------------------------------------------------
+  function VTK_VAR_XML_SCAL_1DA_R8_READ(var_location,varname,NC_NN,NCOMP,var,npiece,cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for reading field of scalar variable (R8P, 1D array).
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  character(*),           intent(IN)  :: var_location ! location of variables: CELL for cell-centered, NODE for node-centered
+  character(*),           intent(IN)  :: varname      ! variable name
+  integer(I4P),           intent(OUT) :: NC_NN        ! number of cells or nodes
+  integer(I4P),           intent(OUT) :: NCOMP        ! number of components
+  real(R8P), allocatable, intent(OUT) :: var(:)       ! variable to be saved
+  integer(I4P), optional, intent(IN)  :: npiece       ! Number of the piece to read (by default: 1)
+  integer(I4P), optional, intent(IN)  :: cf           !< Current file index (for concurrent files IO).
+  integer(I4P)                        :: E_IO         ! Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
+  integer(I4P)                        :: rf           !< Real file index.
+  character(len=:), allocatable       :: s_buffer     !< Buffer string.
+  character(len=:), allocatable       :: fmt
+  character(len=:), allocatable       :: type
+  character(len=:), allocatable       :: data
+  integer(I4P)                        :: np, offs, pos
+  integer(I4P)                        :: N_Byte
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  np = 1_I4P; if (present(npiece)) np = npiece
+
+  select case(vtk(rf)%f)
+    case(ascii)
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside=trim(vtk(rf)%topology), to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos)
+      select case(trim(Upper_case(var_location)))
+      case('NODE')
+        call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='PointData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer, content=data)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      case('CELL')
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='CellData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer, content=data)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      end select
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+          E_IO = -1_I4P
+        else
+          read(data, fmt=*, iostat=E_IO) var
+        endif
+      endif
+
+    case(binary)
+! Not implemented
+
+    case(raw)
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside=trim(vtk(rf)%topology), to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos)
+      select case(trim(Upper_case(var_location)))
+      case('NODE')
+        call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='PointData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      case('CELL')
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='CellData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      end select
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+          E_IO = -1_I4P
+        else
+          read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+        endif
+      endif
+
+  endselect
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function
+
+
+  function VTK_VAR_XML_SCAL_1DA_R4_READ(var_location,varname,NC_NN,NCOMP,var,npiece,cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for reading field of scalar variable (R8P, 1D array).
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  character(*),           intent(IN)  :: var_location ! location of variables: CELL for cell-centered, NODE for node-centered
+  character(*),           intent(IN)  :: varname      ! variable name
+  integer(I4P),           intent(OUT) :: NC_NN        ! number of cells or nodes
+  integer(I4P),           intent(OUT) :: NCOMP        ! number of components
+  real(R4P), allocatable, intent(OUT) :: var(:)       ! variable to be saved
+  integer(I4P), optional, intent(IN)  :: npiece       ! Number of the piece to read (by default: 1)
+  integer(I4P), optional, intent(IN)  :: cf           !< Current file index (for concurrent files IO).
+  integer(I4P)                        :: E_IO         ! Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
+  integer(I4P)                        :: rf           !< Real file index.
+  character(len=:), allocatable       :: s_buffer     !< Buffer string.
+  character(len=:), allocatable       :: fmt
+  character(len=:), allocatable       :: type
+  character(len=:), allocatable       :: data
+  integer(I4P)                        :: np, offs, pos
+  integer(I4P)                        :: N_Byte
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  np = 1_I4P; if (present(npiece)) np = npiece
+
+  select case(vtk(rf)%f)
+    case(ascii)
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside=trim(vtk(rf)%topology), to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos)
+      select case(trim(Upper_case(var_location)))
+      case('NODE')
+        call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='PointData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer, content=data)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      case('CELL')
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='CellData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer, content=data)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      end select
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+          E_IO = -1_I4P
+        else
+          read(data, fmt=*, iostat=E_IO) var
+        endif
+      endif
+
+    case(binary)
+! Not implemented
+
+    case(raw)
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside=trim(vtk(rf)%topology), to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos)
+      select case(trim(Upper_case(var_location)))
+      case('NODE')
+        call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='PointData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      case('CELL')
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='CellData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      end select
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+          E_IO = -1_I4P
+        else
+          read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+        endif
+      endif
+
+  endselect
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function
+
+
+  function VTK_VAR_XML_SCAL_1DA_I8_READ(var_location,varname,NC_NN,NCOMP,var,npiece,cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for reading field of scalar variable (R8P, 1D array).
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  character(*),              intent(IN)  :: var_location ! location of variables: CELL for cell-centered, NODE for node-centered
+  character(*),              intent(IN)  :: varname      ! variable name
+  integer(I4P),              intent(OUT) :: NC_NN        ! number of cells or nodes
+  integer(I4P),              intent(OUT) :: NCOMP        ! number of components
+  integer(I8P), allocatable, intent(OUT) :: var(:)       ! variable to be saved
+  integer(I4P), optional,    intent(IN)  :: npiece       ! Number of the piece to read (by default: 1)
+  integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
+  integer(I4P)                           :: E_IO         ! Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
+  integer(I4P)                           :: rf           !< Real file index.
+  character(len=:), allocatable          :: s_buffer     !< Buffer string.
+  character(len=:), allocatable          :: fmt
+  character(len=:), allocatable          :: type
+  character(len=:), allocatable          :: data
+  integer(I4P)                           :: np, offs, pos
+  integer(I4P)                           :: N_Byte
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  np = 1_I4P; if (present(npiece)) np = npiece
+
+  select case(vtk(rf)%f)
+    case(ascii)
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside=trim(vtk(rf)%topology), to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos)
+      select case(trim(Upper_case(var_location)))
+      case('NODE')
+        call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='PointData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer, content=data)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      case('CELL')
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='CellData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer, content=data)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      end select
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT64') then
+          E_IO = -1_I4P
+        else
+          read(data, fmt=*, iostat=E_IO) var
+        endif
+      endif
+
+    case(binary)
+! Not implemented
+
+    case(raw)
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside=trim(vtk(rf)%topology), to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos)
+      select case(trim(Upper_case(var_location)))
+      case('NODE')
+        call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='PointData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      case('CELL')
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='CellData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      end select
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT64') then
+          E_IO = -1_I4P
+        else
+          read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+        endif
+      endif
+
+  endselect
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function
+
+  function VTK_VAR_XML_SCAL_1DA_I4_READ(var_location,varname,NC_NN,NCOMP,var,npiece,cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for reading field of scalar variable (R8P, 1D array).
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  character(*),              intent(IN)  :: var_location ! location of variables: CELL for cell-centered, NODE for node-centered
+  character(*),              intent(IN)  :: varname      ! variable name
+  integer(I4P),              intent(OUT) :: NC_NN        ! number of cells or nodes
+  integer(I4P),              intent(OUT) :: NCOMP        ! number of components
+  integer(I4P), allocatable, intent(OUT) :: var(:)       ! variable to be saved
+  integer(I4P), optional,    intent(IN)  :: npiece       ! Number of the piece to read (by default: 1)
+  integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
+  integer(I4P)                           :: E_IO         ! Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
+  integer(I4P)                           :: rf           !< Real file index.
+  character(len=:), allocatable          :: s_buffer     !< Buffer string.
+  character(len=:), allocatable          :: fmt
+  character(len=:), allocatable          :: type
+  character(len=:), allocatable          :: data
+  integer(I4P)                           :: np, offs, pos
+  integer(I4P)                           :: N_Byte
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  np = 1_I4P; if (present(npiece)) np = npiece
+
+  select case(vtk(rf)%f)
+    case(ascii)
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside=trim(vtk(rf)%topology), to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos)
+      select case(trim(Upper_case(var_location)))
+      case('NODE')
+        call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='PointData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer, content=data)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      case('CELL')
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='CellData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer, content=data)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      end select
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT32') then
+          E_IO = -1_I4P
+        else
+          read(data, fmt=*, iostat=E_IO) var
+        endif
+      endif
+
+    case(binary)
+! Not implemented
+
+    case(raw)
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside=trim(vtk(rf)%topology), to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos)
+      select case(trim(Upper_case(var_location)))
+      case('NODE')
+        call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='PointData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      case('CELL')
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='CellData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      end select
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT32') then
+          E_IO = -1_I4P
+        else
+          read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+        endif
+      endif
+
+  endselect
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function
+
+
+  function VTK_VAR_XML_SCAL_1DA_I2_READ(var_location,varname,NC_NN,NCOMP,var,npiece,cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for reading field of scalar variable (R8P, 1D array).
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  character(*),              intent(IN)  :: var_location ! location of variables: CELL for cell-centered, NODE for node-centered
+  character(*),              intent(IN)  :: varname      ! variable name
+  integer(I4P),              intent(OUT) :: NC_NN        ! number of cells or nodes
+  integer(I4P),              intent(OUT) :: NCOMP        ! number of components
+  integer(I2P), allocatable, intent(OUT) :: var(:)       ! variable to be saved
+  integer(I4P), optional,    intent(IN)  :: npiece       ! Number of the piece to read (by default: 1)
+  integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
+  integer(I4P)                           :: E_IO         ! Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
+  integer(I4P)                           :: rf           !< Real file index.
+  character(len=:), allocatable          :: s_buffer     !< Buffer string.
+  character(len=:), allocatable          :: fmt
+  character(len=:), allocatable          :: type
+  character(len=:), allocatable          :: data
+  integer(I4P)                           :: np, offs, pos
+  integer(I4P)                           :: N_Byte
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  np = 1_I4P; if (present(npiece)) np = npiece
+
+  select case(vtk(rf)%f)
+    case(ascii)
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside=trim(vtk(rf)%topology), to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos)
+      select case(trim(Upper_case(var_location)))
+      case('NODE')
+        call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='PointData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer, content=data)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      case('CELL')
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='CellData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer, content=data)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      end select
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT16') then
+          E_IO = -1_I4P
+        else
+          read(data, fmt=*, iostat=E_IO) var
+        endif
+      endif
+
+    case(binary)
+! Not implemented
+
+    case(raw)
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside=trim(vtk(rf)%topology), to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos)
+      select case(trim(Upper_case(var_location)))
+      case('NODE')
+        call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='PointData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      case('CELL')
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='CellData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      end select
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT16') then
+          E_IO = -1_I4P
+        else
+          read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+        endif
+      endif
+
+  endselect
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function
+
+
+  function VTK_VAR_XML_SCAL_1DA_I1_READ(var_location,varname,NC_NN,NCOMP,var,npiece,cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for reading field of scalar variable (R8P, 1D array).
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  character(*),              intent(IN)  :: var_location ! location of variables: CELL for cell-centered, NODE for node-centered
+  character(*),              intent(IN)  :: varname      ! variable name
+  integer(I4P),              intent(OUT) :: NC_NN        ! number of cells or nodes
+  integer(I4P),              intent(OUT) :: NCOMP        ! number of components
+  integer(I1P), allocatable, intent(OUT) :: var(:)       ! variable to be saved
+  integer(I4P), optional,    intent(IN)  :: npiece       ! Number of the piece to read (by default: 1)
+  integer(I4P), optional,    intent(IN)  :: cf           !< Current file index (for concurrent files IO).
+  integer(I4P)                           :: E_IO         ! Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
+  integer(I4P)                           :: rf           !< Real file index.
+  character(len=:), allocatable          :: s_buffer     !< Buffer string.
+  character(len=:), allocatable          :: fmt
+  character(len=:), allocatable          :: type
+  character(len=:), allocatable          :: data
+  integer(I4P)                           :: np, offs, pos
+  integer(I4P)                           :: N_Byte
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  np = 1_I4P; if (present(npiece)) np = npiece
+
+  select case(vtk(rf)%f)
+    case(ascii)
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside=trim(vtk(rf)%topology), to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos)
+      select case(trim(Upper_case(var_location)))
+      case('NODE')
+        call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='PointData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer, content=data)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      case('CELL')
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='CellData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer, content=data)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      end select
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT8') then
+          E_IO = -1_I4P
+        else
+          read(data, fmt=*, iostat=E_IO) var
+        endif
+      endif
+
+    case(binary)
+! Not implemented
+
+    case(raw)
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside=trim(vtk(rf)%topology), to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos)
+      select case(trim(Upper_case(var_location)))
+      case('NODE')
+        call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='PointData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      case('CELL')
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC_NN, E_IO=E_IO)
+        E_IO = search(from=pos, inside='CellData', to_find='DataArray', with_attribute='Name', of_value=varname, &
+                      buffer=s_buffer)
+        if(E_IO == 0) then
+          call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+          allocate(var(NC_NN*NCOMP), stat=E_IO)
+        endif
+      end select
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT8') then
+          E_IO = -1_I4P
+        else
+          read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+        endif
+      endif
+
+  endselect
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function
+
 
 
   function VTK_END_XML_READ(cf) result(E_IO)
