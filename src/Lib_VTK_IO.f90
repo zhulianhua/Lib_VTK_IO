@@ -6642,9 +6642,9 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I1P), allocatable           :: dI1P(:)
   integer(I4P)                        :: np, i, offs, N_Byte, pos, s
-  real(R4P), allocatable              :: XYZ(:)
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -6699,11 +6699,11 @@ contains
           call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
           ! Unpack data [1xI4P,3*NNxR4P]
           N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
-          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZ)); allocate(XYZ(1:s))
-          XYZ = transfer(dI1P(int(BYI4P,I4P)+1:),XYZ); if(allocated(dI1P)) deallocate(dI1P)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
           allocate(X(NN), Y(NN), Z(NN), stat=E_IO)
-          do i=1,NN; X(i)=XYZ(i*3-2); Y(i)=XYZ(i*3-1); Z(i)=XYZ(i*3); enddo
-          if(allocated(XYZ)) deallocate(XYZ)
+          do i=1,NN; X(i)=XYZp(i*3-2); Y(i)=XYZp(i*3-1); Z(i)=XYZp(i*3); enddo
+          if(allocated(XYZp)) deallocate(XYZp)
         endif
       endif
 
@@ -6750,7 +6750,9 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, offs, N_Byte, pos
+  integer(I4P)                        :: np, i, offs, N_Byte, pos, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -6785,7 +6787,33 @@ contains
       endif
 
     case(binary)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
+        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                      buffer=s_buffer,content=data)
+        call get_char(buffer=s_buffer,  attrib='type', val=type, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+          E_IO = -1_I4P !stop 'Format not implemented'
+        else
+          ! Decode base64 packed data
+          data=trim(adjustlt(data))
+          allocate(dI1P(3*NN*int(BYR8P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,3*NNxR8P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          allocate(X(NN), Y(NN), Z(NN), stat=E_IO)
+          do i=1,NN; X(i)=XYZp(i*3-2); Y(i)=XYZp(i*3-1); Z(i)=XYZp(i*3); enddo
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
+      endif
 
     case(raw)
 
@@ -6827,7 +6855,9 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, offs, N_Byte, pos
+  integer(I4P)                        :: np, i, j, offs, N_Byte, pos, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -6855,14 +6885,40 @@ contains
             trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
           E_IO = -1_I4P 
         else
-          allocate(XYZ(3,NN), stat=E_IO)
+
           read(data, fmt=*, iostat=E_IO) ((XYZ(i,j),i=1,3),j=1,NN) !get ascii array
         endif
         if(allocated(data)) deallocate(data)
       endif
 
     case(binary)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
+        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                      buffer=s_buffer,content=data)
+        call get_char(buffer=s_buffer,  attrib='type', val=type, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+          E_IO = -1_I4P !stop 'Format not implemented'
+        else
+          ! Decode base64 packed data
+          data=trim(adjustlt(data))
+          allocate(dI1P(3*NN*int(BYR4P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,3*NNxR4P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          allocate(XYZ(3,NN), stat=E_IO)
+          XYZ = reshape(XYZp,(/3,NN/))
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
+      endif
 
     case(raw)
 
@@ -6905,7 +6961,9 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, offs, N_Byte, pos
+  integer(I4P)                        :: np, i, j, offs, N_Byte, pos, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -6940,7 +6998,33 @@ contains
       endif
 
     case(binary)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
+        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                      buffer=s_buffer,content=data)
+        call get_char(buffer=s_buffer,  attrib='type', val=type, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+          E_IO = -1_I4P !stop 'Format not implemented'
+        else
+          ! Decode base64 packed data
+          data=trim(adjustlt(data))
+          allocate(dI1P(3*NN*int(BYR8P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,3*NNxR8P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          allocate(XYZ(3,NN), stat=E_IO)
+          XYZ = reshape(XYZp,(/3,NN/))
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
+      endif
 
     case(raw)
 
@@ -6991,8 +7075,9 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, offs, N_Byte, pos
-
+  integer(I4P)                        :: np, i, offs, N_Byte, pos, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7030,7 +7115,37 @@ contains
       endif
 
     case(binary)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+            E_IO = -1_I4P 
+          else
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(3*NN*int(BYR4P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,3*NNxR4P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            allocate(X(NN), Y(NN), Z(NN), stat=E_IO)
+            do i=1,NN; X(i)=XYZp(i*3-2); Y(i)=XYZp(i*3-1); Z(i)=XYZp(i*3); enddo
+            if(allocated(XYZp)) deallocate(XYZp)
+          endif
+        endif
+      endif
 
     case(raw)
 
@@ -7084,8 +7199,9 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, offs, N_Byte, pos
-
+  integer(I4P)                        :: np, i, offs, N_Byte, pos, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7123,7 +7239,37 @@ contains
       endif
 
     case(binary)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+            E_IO = -1_I4P 
+          else
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(3*NN*int(BYR8P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,3*NNxR8P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            allocate(X(NN), Y(NN), Z(NN), stat=E_IO)
+            do i=1,NN; X(i)=XYZp(i*3-2); Y(i)=XYZp(i*3-1); Z(i)=XYZp(i*3); enddo
+            if(allocated(XYZp)) deallocate(XYZp)
+          endif
+        endif
+      endif
 
     case(raw)
 
@@ -7165,7 +7311,7 @@ contains
   integer(I4P),           intent(OUT) :: nz1      !< Initial node of z axis.
   integer(I4P),           intent(OUT) :: nz2      !< Final node of z axis.
   integer(I4P),           intent(OUT) :: NN       !< Number of nodes
-  real(R4P), allocatable, intent(OUT) :: XYZ(:,:)     !< x coordinates
+  real(R4P), allocatable, intent(OUT) :: XYZ(:,:) !< x coordinates
   integer(I4P), optional, intent(IN)  :: npiece   !< Number of the piece to read (by default: 1)
   integer(I4P), optional, intent(IN)  :: cf       !< Current file index (for concurrent files IO).
   integer(I4P)                        :: E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
@@ -7175,8 +7321,9 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, offs, N_Byte, pos
-
+  integer(I4P)                        :: np, i, j, offs, N_Byte, pos, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7214,7 +7361,37 @@ contains
       endif
 
     case(binary)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+            E_IO = -1_I4P 
+          else
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(3*NN*int(BYR4P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,3*NNxR4P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            allocate(XYZ(3,NN), stat=E_IO)
+            XYZ = reshape(XYZp,(/3,NN/))
+            if(allocated(XYZp)) deallocate(XYZp)
+          endif
+        endif
+      endif
 
     case(raw)
 
@@ -7232,7 +7409,7 @@ contains
           call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
           call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
           if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
             E_IO = -1_I4P 
           else
             allocate(XYZ(3,NN), stat=E_IO)        
@@ -7266,8 +7443,9 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, offs, N_Byte, pos
-
+  integer(I4P)                        :: np, i, j, offs, N_Byte, pos, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7305,7 +7483,37 @@ contains
       endif
 
     case(binary)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+            E_IO = -1_I4P 
+          else
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(3*NN*int(BYR8P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,3*NNxR8P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            allocate(XYZ(3,NN), stat=E_IO)
+            XYZ = reshape(XYZp,(/3,NN/))
+            if(allocated(XYZp)) deallocate(XYZp)
+          endif
+        endif
+      endif
 
     case(raw)
 
@@ -7359,8 +7567,9 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, k, offs, N_Byte, pos
-
+  integer(I4P)                        :: np, i, j, k, offs, N_Byte, pos, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7398,7 +7607,42 @@ contains
       endif
 
     case(binary)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+            E_IO = -1_I4P 
+          else
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(3*NN*int(BYR4P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,3*NNxR4P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            allocate(X(nx1:nx2,ny1:ny2,nz1:nz2), Y(nx1:nx2,ny1:ny2,nz1:nz2), Z(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+            s=1
+            do k=nz1,nz2-nz1;do j=ny1,ny2;do i=nx1,nx2;
+              X(i,j,k) = XYZp(s);s=s+1
+              Y(i,j,k) = XYZp(s);s=s+1
+              Z(i,j,k) = XYZp(s);s=s+1
+            enddo;enddo;enddo;
+            if(allocated(XYZp)) deallocate(XYZp)
+          endif
+        endif
+      endif
 
     case(raw)
 
@@ -7453,8 +7697,9 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, k, offs, N_Byte, pos 
-
+  integer(I4P)                        :: np, i, j, k, offs, N_Byte, pos, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7492,7 +7737,42 @@ contains
       endif
 
     case(binary)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+            E_IO = -1_I4P 
+          else
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(3*NN*int(BYR8P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,3*NNxR8P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            allocate(X(nx1:nx2,ny1:ny2,nz1:nz2), Y(nx1:nx2,ny1:ny2,nz1:nz2), Z(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+            s=1
+            do k=nz1,nz2-nz1;do j=ny1,ny2;do i=nx1,nx2;
+              X(i,j,k) = XYZp(s);s=s+1
+              Y(i,j,k) = XYZp(s);s=s+1
+              Z(i,j,k) = XYZp(s);s=s+1
+            enddo;enddo;enddo;
+            if(allocated(XYZp)) deallocate(XYZp)
+          endif
+        endif
+      endif
 
     case(raw)
 
@@ -7544,8 +7824,9 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, k, l, offs, N_Byte, pos
-
+  integer(I4P)                        :: np, i, j, k, l, offs, N_Byte, pos, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7583,7 +7864,38 @@ contains
       endif
 
     case(binary)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+            E_IO = -1_I4P 
+          else
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(3*NN*int(BYR4P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,3*NNxR4P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            allocate(XYZ(3,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)      
+            s=1
+            XYZ(:,:,:,:) = reshape(XYZp, (/3,nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+            if(allocated(XYZp)) deallocate(XYZp)
+          endif
+        endif
+      endif
 
     case(raw)
 
@@ -7635,8 +7947,9 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, j, k, l, offs, N_Byte, pos
-
+  integer(I4P)                        :: np, i, j, k, l, offs, N_Byte, pos, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7675,7 +7988,38 @@ contains
 
 
     case(binary)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='StructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          NN = (nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)
+          E_IO = search(from=pos, inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type,  E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+            E_IO = -1_I4P 
+          else
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(3*NN*int(BYR8P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,3*NNxR8P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            allocate(XYZ(3,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)      
+            s=1
+            XYZ(:,:,:,:) = reshape(XYZp, (/3,nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+            if(allocated(XYZp)) deallocate(XYZp)
+          endif
+        endif
+      endif
 
     case(raw)
 
@@ -7729,7 +8073,9 @@ contains
   character(len=:), allocatable       :: type, typeX, typeY, typeZ
   character(len=:), allocatable       :: data
   integer(I4P)                        :: offsX, offsY, offsZ
-  integer(I4P)                        :: np, i, N_Byte, pos
+  integer(I4P)                        :: np, i, N_Byte, pos, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7788,7 +8134,77 @@ contains
       endif
 
     case(binary)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='RectilinearGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+            E_IO = -1_I4P 
+          else
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(3*((nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1))*int(BYR4P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,3*NNxR4P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            allocate(X(nx1:nx2), stat=E_IO)
+            X(nx1:nx2) = XYZp(:)
+            if(allocated(XYZp)) deallocate(XYZp)
+          endif
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+            E_IO = -1_I4P 
+          else
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(3*((nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1))*int(BYR4P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,3*NNxR4P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            allocate(Y(ny1:ny2), stat=E_IO)
+            Y(ny1:ny2) = XYZp(:)
+            if(allocated(XYZp)) deallocate(XYZp)
+          endif
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+            E_IO = -1_I4P 
+          else
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(3*((nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1))*int(BYR4P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,3*NNxR4P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            allocate(Z(nz1:nz2), stat=E_IO)
+            Z(nz1:nz2) = XYZp(:)
+            if(allocated(XYZp)) deallocate(XYZp)
+          endif
+          if(allocated(data)) deallocate(data)
+        endif
+      endif
 
     case(raw)
 
@@ -7854,7 +8270,9 @@ contains
   character(len=:), allocatable       :: type, typeX, typeY, typeZ
   character(len=:), allocatable       :: data
   integer(I4P)                        :: offsX, offsY, offsZ
-  integer(I4P)                        :: np, i, N_Byte, pos
+  integer(I4P)                        :: np, i, N_Byte, pos, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -7914,7 +8332,77 @@ contains
 
 
     case(binary)
-! not implemented
+
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='RectilinearGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
+      call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then      
+        read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
+        if(E_IO == 0) then      
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+            E_IO = -1_I4P 
+          else
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(3*((nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1))*int(BYR8P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,3*NNxR8P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            allocate(X(nx1:nx2), stat=E_IO)
+            X(nx1:nx2) = XYZp(:)
+            if(allocated(XYZp)) deallocate(XYZp)
+          endif
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+            E_IO = -1_I4P 
+          else
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(3*((nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1))*int(BYR8P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,3*NNxR8P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            allocate(Y(ny1:ny2), stat=E_IO)
+            Y(ny1:ny2) = XYZp(:)
+            if(allocated(XYZp)) deallocate(XYZp)
+          endif
+          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', &
+                        buffer=s_buffer,content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type',   val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+            E_IO = -1_I4P 
+          else
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(3*((nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1))*int(BYR8P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,3*NNxR8P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            allocate(Z(nz1:nz2), stat=E_IO)
+            Z(nz1:nz2) = XYZp(:)
+            if(allocated(XYZp)) deallocate(XYZp)
+          endif
+          if(allocated(data)) deallocate(data)
+        endif
+      endif
 
     case(raw)
 
