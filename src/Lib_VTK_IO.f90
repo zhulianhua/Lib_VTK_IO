@@ -27,6 +27,7 @@ public:: VTK_VAR_XML
 public:: VTK_END_XML
 ! functions for VTK XML READ
 public:: VTK_INI_XML_READ
+public:: VTK_FLD_XML_READ
 public:: VTK_GEO_XML_READ
 public:: VTK_CON_XML_READ
 public:: VTK_VAR_XML_READ
@@ -399,6 +400,32 @@ interface VTK_VAR_XML_READ
                    VTK_VAR_XML_LIST_1DA_I2_READ,VTK_VAR_XML_LIST_3DA_I2_READ, & ! integer(I2P) list      1D/3D array
                    VTK_VAR_XML_LIST_1DA_I1_READ,VTK_VAR_XML_LIST_3DA_I1_READ    ! integer(I1P) list      1D/3D array
 endinterface
+
+interface VTK_FLD_XML_READ
+  !< Procedure for saving field data (global auxiliary data, eg time, step number, dataset name, etc).
+  !<
+  !< VTK_FLD_XML_READ is an interface to 6 different functions, there are 2 functions for real field data and 4 functions for integer.
+  !< VTK_FLD_XML_READ must be called after VTK_INI_XML_READ.
+  !<
+  !< Example of usage:
+  !<
+  !<```fortran
+  !<...
+  !<real(R8P)::    time
+  !<integer(I4P):: step
+  !<...
+  !<E_IO=VTK_FLD_XML_READ(fname='TIME',fld=time)
+  !<E_IO=VTK_FLD_XML_READ(fname='CYCLE',fld=step)
+  !<...
+  !<```
+  module procedure VTK_FLD_XML_R8_READ, & ! real(R8P)    scalar
+                   VTK_FLD_XML_R4_READ, & ! real(R4P)    scalar
+                   VTK_FLD_XML_I8_READ, & ! integer(I8P) scalar
+                   VTK_FLD_XML_I4_READ, & ! integer(I4P) scalar
+                   VTK_FLD_XML_I2_READ, & ! integer(I2P) scalar
+                   VTK_FLD_XML_I1_READ    ! integer(I1P) scalar
+endinterface
+
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 
@@ -779,6 +806,7 @@ contains
   integer(I4P)                                 :: E_IO           !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   character(len=:), allocatable                :: strng
   integer(I4P)                                 :: pos
+  integer(I4P)                                 :: p1,p2,p3
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -805,13 +833,22 @@ contains
         if (len_trim(of_value) == 0) exit !there is no attribute value to seach
         call get_char(buffer, with_attribute, strng, E_IO=E_IO)
         if (E_IO==0 .and. trim(adjustlt(Upper_Case(strng))) == trim(adjustlt(Upper_Case(of_value)))) then  !Attribute match the value
-          if (present(content) .and. index(buffer, '/>') == 0 .and. &
-              index(buffer, '</'//trim(adjustlt(Upper_Case(to_find)))) == 0) then
-            do
-              E_IO = read_record(strng, cf=rf); if(E_IO /= 0) exit
-              if (index(trim(adjustlt(Upper_Case(strng))), '</'//trim(adjustlt(Upper_Case(to_find)))) > 0) exit
-              content = content//strng
-            enddo
+          if (present(content) .and. index(buffer, '/>') == 0) then
+            p1 = index(buffer, '<'//trim(adjustlt(Upper_Case(to_find)))) 
+            p2 = index(buffer, '>') 
+            p3 = index(buffer, '</'//trim(adjustlt(Upper_Case(to_find)))) 
+            ! Data in the same record
+            if(p1/=0 .and. p2/=0 .and. p3/=0 .and. p2<p3) then
+              content = buffer(p2+1:p3-1)
+            elseif(p1==0 .and. p3/=0) then
+              E_IO = -1_I4P
+            else
+              do
+                E_IO = read_record(strng, cf=rf); if(E_IO /= 0) exit
+                if (index(trim(adjustlt(Upper_Case(strng))), '</'//trim(adjustlt(Upper_Case(to_find)))) > 0) exit
+                content = content//strng
+              enddo
+            endif
           endif
           exit
         endif
@@ -6441,6 +6478,7 @@ contains
   character                           :: c1, c2
   character(len=:),allocatable        :: aux
   integer(I4P), dimension(6)          :: rn             !< Real node ranges in WholeExtent [nx1,nx2,ny1,ny2,nz1,nz2]
+  logical                             :: fexist
 
   E_IO = -1_I4P
   if (.not.ir_initialized) call IR_Init
@@ -6449,6 +6487,8 @@ contains
   f = rf
   if (present(cf)) cf = rf
   vtk(rf)%topology = trim(mesh_topology)
+
+  inquire( file=trim(filename), exist=fexist ); if(.not. fexist) return
 
   select case(trim(Upper_Case(input_format)))
   case('ASCII')
@@ -6488,41 +6528,37 @@ contains
 
   case('BINARY')
     vtk(rf)%f = binary
-! Not implemented
-!    select case(trim(vtk(rf)%topology))
-!      case('RectilinearGrid', 'StructuredGrid', 'UnstructuredGrid')
-!
-!        open(unit=Get_Unit(vtk(rf)%u),file=trim(filename),status='old', &
-!             form='UNFORMATTED',access='STREAM',action='READ', &
-!             iostat=E_IO, position='REWIND')
-!
-!        select case(trim(vtk(rf)%topology))
-!          case('RectilinearGrid', 'StructuredGrid')
-!            ! Get WholeExtent
-!            E_IO = move(inside='VTKFile', to_find=trim(vtk(rf)%topology), repeat=1, cf=rf,buffer=s_buffer)
-!            call get_char(buffer=s_buffer, attrib='WholeExtent', val=aux, E_IO=E_IO)
-!            if(E_IO == 0) then
-!              read(aux,*) rn
-!              if(present(nx1)) nx1 = rn(1)
-!              if(present(nx2)) nx2 = rn(2)
-!              if(present(ny1)) ny1 = rn(3)
-!              if(present(ny2)) ny2 = rn(4)
-!              if(present(nz1)) nz1 = rn(5)
-!              if(present(nz2)) nz2 = rn(6)
-!            endif
-!        end select
-!
-!        ! count the pieces
-!        rewind(unit=vtk(rf)%u, iostat=E_IO)
-!        np = 0
-!        do
-!          E_IO = read_record(s_buffer, cf=rf)
-!          s_buffer = trim(adjustl(Upper_Case(s_buffer)))
-!          if (index(s_buffer, '</'//trim(Upper_Case(vtk(rf)%topology))) > 0) exit !end of ASCII header section found
-!          if (index(s_buffer, '<PIECE') > 0) np = np + 1
-!        enddo
-!
-!    end select
+    select case(trim(vtk(rf)%topology))
+      case('RectilinearGrid', 'StructuredGrid', 'UnstructuredGrid')
+
+        open(unit=Get_Unit(vtk(rf)%u),file=trim(filename),status='old', &
+             form='UNFORMATTED',access='STREAM',action='READ', &
+             iostat=E_IO, position='REWIND')
+
+        select case(trim(vtk(rf)%topology))
+          case('RectilinearGrid', 'StructuredGrid')
+            ! Get WholeExtent
+            E_IO = move(inside='VTKFile', to_find=trim(vtk(rf)%topology), cf=rf,buffer=s_buffer)
+            call get_char(buffer=s_buffer, attrib='WholeExtent', val=aux, E_IO=E_IO)
+            if(E_IO == 0) then
+              read(aux,*) rn
+              if(present(nx1)) nx1 = rn(1); if(present(nx2)) nx2 = rn(2)
+              if(present(ny1)) ny1 = rn(3); if(present(ny2)) ny2 = rn(4)
+              if(present(nz1)) nz1 = rn(5); if(present(nz2)) nz2 = rn(6)
+            endif
+        end select
+
+        ! count the pieces
+        rewind(unit=vtk(rf)%u, iostat=E_IO)
+        np = 0
+        do
+          E_IO = read_record(s_buffer, cf=rf); if(E_IO /= 0) exit
+          s_buffer = trim(adjustl(Upper_Case(s_buffer)))
+          if (index(s_buffer, '</'//trim(Upper_Case(vtk(rf)%topology))) > 0) exit !end of ASCII header section found
+          if (index(s_buffer, '<PIECE') > 0) np = np + 1
+        enddo
+
+    end select
 
   case('RAW')
     vtk(rf)%f = raw
@@ -6606,7 +6642,9 @@ contains
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, i, offs, N_Byte, pos
+  integer(I1P), allocatable           :: dI1P(:)
+  integer(I4P)                        :: np, i, offs, N_Byte, pos, s
+  real(R4P), allocatable              :: XYZ(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -6641,34 +6679,33 @@ contains
       endif
 
     case(binary)
-! not implemented
-!      rewind(unit=vtk(rf)%u, iostat=E_IO)
-!      E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
-!      call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
-!      if(E_IO == 0) then
-!        allocate(X(NN), Y(NN), Z(NN), stat=E_IO)
-!        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
-!        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', buffer=s_buffer,content=bindata)
-!        call get_int(buffer=s_buffer,  attrib='offset', val=offs, E_IO=E_IO)
-!        call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
-!        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY') then
-!          E_IO = -1_I4P !stop 'Format not implemented'
-!        else
-!          read(bindata, iostat=E_IO) N_Byte, (X(i), Y(i), Z(i), i=1,NN) !get appended array
 
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! How to do the opposite?
-!    allocate(XYZa(1:3*NN))
-!    do n1 = 1,NN
-!      XYZa(1+(n1-1)*3:1+(n1-1)*3+2)=[X(n1),Y(n1),Z(n1)]
-!    enddo
-!    call pack_data(a1=[int(3*NN*BYR8P,I4P)],a2=XYZa,packed=XYZp) ; deallocate(XYZa)
-!    call b64_encode(n=XYZp,code=XYZ64) ; deallocate(XYZp)
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
- !       endif
-!      endif
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_int(buffer=s_buffer, attrib='NumberOfPoints', val=NN, E_IO=E_IO)
+      if(E_IO == 0) then
+        call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
+        E_IO = search(inside='Points', to_find='DataArray', with_attribute='Name', of_value='Points', &
+                      buffer=s_buffer,content=data)
+        call get_char(buffer=s_buffer,  attrib='type', val=type, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt,  E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+          E_IO = -1_I4P !stop 'Format not implemented'
+        else
+          ! Decode base64 packed data
+          data=trim(adjustlt(data))
+          allocate(dI1P(3*NN*int(BYR4P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,3*NNxR4P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZ)); allocate(XYZ(1:s))
+          XYZ = transfer(dI1P(int(BYI4P,I4P)+1:),XYZ); if(allocated(dI1P)) deallocate(dI1P)
+          allocate(X(NN), Y(NN), Z(NN), stat=E_IO)
+          do i=1,NN; X(i)=XYZ(i*3-2); Y(i)=XYZ(i*3-1); Z(i)=XYZ(i*3); enddo
+          if(allocated(XYZ)) deallocate(XYZ)
+        endif
+      endif
 
     case(raw)
 
@@ -10588,6 +10625,420 @@ end function
   end function
 
 
+  function VTK_FLD_XML_R8_READ(fname,fld,cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for reading field data (global auxiliary data, e.g. time, step number, data set name...) (R8P).
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  character(*),           intent(IN)  :: fname    !< Field data name.
+  real(R8P),              intent(OUT) :: fld      !< Field data value.
+  integer(I4P), optional, intent(IN)  :: cf       !< Current file index (for concurrent files IO).
+  integer(I4P)                        :: E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=:), allocatable       :: s_buffer !< Buffer string.
+  character(len=:), allocatable       :: type     !< VTK data type
+  character(len=:), allocatable       :: fmt      !< VTK data format
+  character(len=:), allocatable       :: data     !< String.
+  integer(I4P)                        :: offs     !< Data offset.
+  integer(I4P)                        :: nt       !< Number of tuples.
+  integer(I4P)                        :: rf       !< Real file index.
+  integer(I4P)                           :: N_Byte
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  select case(vtk(rf)%f)
+  case(ascii)
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer,content=data)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+          trim(adjustlt(Upper_Case(type)))/='FLOAT64' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+        read(data, fmt=*, iostat=E_IO)  fld !get ascii data
+      endif
+      if(allocated(data)) deallocate(data)
+    endif
+  case(binary)
+!Not implemented
+
+  case(raw)
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+          trim(adjustlt(Upper_Case(type)))/='FLOAT64' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+          read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, fld
+      endif
+    endif
+  end select
+
+  return
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function VTK_FLD_XML_R8_READ
+
+
+  function VTK_FLD_XML_R4_READ(fname,fld,cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for reading field data (global auxiliary data, e.g. time, step number, data set name...) (R4P).
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  character(*),           intent(IN)  :: fname    !< Field data name.
+  real(R4P),              intent(OUT) :: fld      !< Field data value.
+  integer(I4P), optional, intent(IN)  :: cf       !< Current file index (for concurrent files IO).
+  integer(I4P)                        :: E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=:), allocatable       :: s_buffer !< Buffer string.
+  character(len=:), allocatable       :: type     !< VTK data type
+  character(len=:), allocatable       :: fmt      !< VTK data format
+  character(len=:), allocatable       :: data     !< String.
+  integer(I4P)                        :: offs     !< Data offset.
+  integer(I4P)                        :: nt       !< Number of tuples.
+  integer(I4P)                        :: rf       !< Real file index.
+  integer(I4P)                           :: N_Byte
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  select case(vtk(rf)%f)
+  case(ascii)
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer,content=data)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+          trim(adjustlt(Upper_Case(type)))/='FLOAT' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+        read(data, fmt=*, iostat=E_IO)  fld !get ascii data
+      endif
+      if(allocated(data)) deallocate(data)
+    endif
+
+  case(binary)
+!Not implemented
+
+  case(raw)
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+          trim(adjustlt(Upper_Case(type)))/='FLOAT32' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+          read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, fld
+      endif
+    endif
+
+  end select
+
+  return
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function VTK_FLD_XML_R4_READ
+
+
+  function VTK_FLD_XML_I8_READ(fname,fld,cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for reading field data (global auxiliary data, e.g. time, step number, data set name...) (I8P).
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  character(*),           intent(IN)  :: fname    !< Field data name.
+  integer(I8P),           intent(OUT) :: fld      !< Field data value.
+  integer(I4P), optional, intent(IN)  :: cf       !< Current file index (for concurrent files IO).
+  integer(I4P)                        :: E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=:), allocatable       :: s_buffer !< Buffer string.
+  character(len=:), allocatable       :: type     !< VTK data type
+  character(len=:), allocatable       :: fmt      !< VTK data format
+  character(len=:), allocatable       :: data     !< String.
+  integer(I4P)                        :: offs     !< Data offset.
+  integer(I4P)                        :: nt       !< Number of tuples.
+  integer(I4P)                        :: rf       !< Real file index.
+  integer(I4P)                           :: N_Byte
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  select case(vtk(rf)%f)
+  case(ascii)
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer,content=data)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT64' .or. nt/=1) then        
+        E_IO = -1_I4P
+      else
+        read(data, fmt=*, iostat=E_IO)  fld !get ascii data
+      endif
+      if(allocated(data)) deallocate(data)
+    endif
+
+  case(binary)
+!Not implemented
+
+  case(raw)
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT64' .or. nt/=1) then        
+        E_IO = -1_I4P
+      else
+        read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, fld
+      endif
+    endif
+  end select
+
+  return
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function VTK_FLD_XML_I8_READ
+
+  function VTK_FLD_XML_I4_READ(fname,fld,cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for reading field data (global auxiliary data, e.g. time, step number, data set name...) (I4P).
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  character(*),           intent(IN)  :: fname    !< Field data name.
+  integer(I4P),           intent(OUT) :: fld      !< Field data value.
+  integer(I4P), optional, intent(IN)  :: cf       !< Current file index (for concurrent files IO).
+  integer(I4P)                        :: E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=:), allocatable       :: s_buffer !< Buffer string.
+  character(len=:), allocatable       :: type     !< VTK data type
+  character(len=:), allocatable       :: fmt      !< VTK data format
+  character(len=:), allocatable       :: data     !< String.
+  integer(I4P)                        :: offs     !< Data offset.
+  integer(I4P)                        :: nt       !< Number of tuples.
+  integer(I4P)                        :: rf       !< Real file index.
+  integer(I4P)                           :: N_Byte
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  select case(vtk(rf)%f)
+  case(ascii)
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer,content=data)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT32' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+        read(data, fmt=*, iostat=E_IO)  fld !get ascii data
+      endif
+      if(allocated(data)) deallocate(data)
+    endif
+
+  case(binary)
+!Not implemented
+
+  case(raw)
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT32' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+          read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, fld
+      endif
+    endif
+
+  end select
+
+  return
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function VTK_FLD_XML_I4_READ
+
+
+  function VTK_FLD_XML_I2_READ(fname,fld,cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for reading field data (global auxiliary data, e.g. time, step number, data set name...) (I2P).
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  character(*),           intent(IN)  :: fname    !< Field data name.
+  integer(I2P),           intent(OUT) :: fld      !< Field data value.
+  integer(I4P), optional, intent(IN)  :: cf       !< Current file index (for concurrent files IO).
+  integer(I4P)                        :: E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=:), allocatable       :: s_buffer !< Buffer string.
+  character(len=:), allocatable       :: type     !< VTK data type
+  character(len=:), allocatable       :: fmt      !< VTK data format
+  character(len=:), allocatable       :: data     !< String.
+  integer(I4P)                        :: offs     !< Data offset.
+  integer(I4P)                        :: nt       !< Number of tuples.
+  integer(I4P)                        :: rf       !< Real file index.
+  integer(I4P)                           :: N_Byte
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  select case(vtk(rf)%f)
+  case(ascii)
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer,content=data)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT16' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+        read(data, fmt=*, iostat=E_IO)  fld !get ascii data
+      endif
+      if(allocated(data)) deallocate(data)
+    endif
+
+  case(binary)
+!Not implemented
+
+  case(raw)
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT16' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+          read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, fld
+      endif
+    endif
+
+  end select
+
+  return
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function VTK_FLD_XML_I2_READ
+
+
+  function VTK_FLD_XML_I1_READ(fname,fld,cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for reading field data (global auxiliary data, e.g. time, step number, data set name...) (I1P).
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  character(*),           intent(IN)  :: fname    !< Field data name.
+  integer(I1P),              intent(OUT) :: fld      !< Field data value.
+  integer(I4P), optional, intent(IN)  :: cf       !< Current file index (for concurrent files IO).
+  integer(I4P)                        :: E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=:), allocatable       :: s_buffer !< Buffer string.
+  character(len=:), allocatable       :: type     !< VTK data type
+  character(len=:), allocatable       :: fmt      !< VTK data format
+  character(len=:), allocatable       :: data     !< String.
+  integer(I4P)                        :: offs     !< Data offset.
+  integer(I4P)                        :: nt       !< Number of tuples.
+  integer(I4P)                        :: rf       !< Real file index.
+  integer(I4P)                           :: N_Byte
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  select case(vtk(rf)%f)
+  case(ascii)
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer,content=data)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT8' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+        read(data, fmt=*, iostat=E_IO)  fld !get ascii data
+      endif
+      if(allocated(data)) deallocate(data)
+    endif
+
+  case(binary)
+!Not implemented
+
+  case(raw)
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      call get_int(buffer=s_buffer, attrib='offset', val=offs, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT8' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+          read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, fld
+      endif
+    endif
+  end select
+
+  return
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function VTK_FLD_XML_I1_READ
+
 
 
   function VTK_END_XML_READ(cf) result(E_IO)
@@ -10595,8 +11046,9 @@ end function
   !< Function for close an opened VTK file.
   !---------------------------------------------------------------------------------------------------------------------------------
   integer(I4P), optional :: cf
-  integer(I4P) :: rf
-  integer(I4P) :: E_IO 
+  integer(I4P)           :: rf
+  integer(I4P)           :: E_IO 
+  logical                :: fopen
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10605,7 +11057,8 @@ end function
   
   select case(vtk(rf)%f)
   case(ascii,binary,raw)
-    close(unit=vtk(rf)%u, iostat=E_IO)
+    inquire(unit=vtk(rf)%u, opened=fopen,iostat=E_IO) 
+    if(fopen) close(unit=vtk(rf)%u, iostat=E_IO)
   end select
   !---------------------------------------------------------------------------------------------------------------------------------
   end function VTK_END_XML_READ
