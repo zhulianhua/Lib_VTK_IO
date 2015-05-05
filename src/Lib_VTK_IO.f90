@@ -715,7 +715,7 @@ contains
 !    s_buffer(n:n) = c 
     buffer = buffer//c
     n = n + 1
-    read(unit=vtk(rf)%u, iostat=E_IO) c
+    read(unit=vtk(rf)%u, iostat=E_IO) c; if(E_IO /= 0) exit
   enddo
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
@@ -742,20 +742,21 @@ contains
   endif
 
   do !search the beginnig of the mark 'inside' 
-    E_IO = read_record(buffer, cf=rf)
+    E_IO = read_record(buffer, cf=rf); if(E_IO /= 0) exit
     buffer = trim(adjustlt(Upper_Case(buffer)))
     if (index(buffer, '<'//trim(adjustlt(Upper_Case(inside)))) > 0) exit !Mark 'inside' founded once
   enddo
 
-  if(present(to_find)) then
+  if(E_IO == 0 .and. present(to_find)) then
     n = 1; if(present(repeat)) n = repeat
     do !search 'repeat' times the mark 'to_find'
-      E_IO = read_record(buffer, cf=rf)
+      E_IO = read_record(buffer, cf=rf); if(E_IO /= 0) exit
       buffer = trim(adjustlt(Upper_Case(buffer)))
-      if (index(buffer, '</'//trim(adjustlt(Upper_Case(inside)))) > 0) E_IO = -1
+      if (index(buffer, '</'//trim(adjustlt(Upper_Case(inside)))) > 0) exit
       if (index(buffer, '<'//trim(adjustlt(Upper_Case(to_find)))) > 0) n = n - 1 !Mark 'to_find' founded once 
       if (n == 0) exit !Mark 'to_find' founded 'repeat' times
     enddo
+    if (n > 0 ) E_IO = -1_I4P
   endif
   !---------------------------------------------------------------------------------------------------------------------------------
   end function move
@@ -766,16 +767,16 @@ contains
   !< search: search in VTK file from position 'pos' inside the mark 'inside', until find the mark 'to_find', eventually, having 
   !< attribute 'with_attribute' matching the value 'of_value'
   !---------------------------------------------------------------------------------------------------------------------------------
-  integer(I4P),     optional,    intent(IN)    :: from    !< Offset. Start point
-  character(len=*),              intent(IN)    :: inside  !< XML element where to search 'to_find'
-  character(len=*),              intent(IN)    :: to_find !< Searched XML element
+  integer(I4P),     optional,    intent(IN)    :: from           !< Offset. Start point
+  character(len=*),              intent(IN)    :: inside         !< XML element where to search 'to_find'
+  character(len=*),              intent(IN)    :: to_find        !< Searched XML element
   character(len=*),              intent(IN)    :: with_attribute !< XML attribute id
   character(len=*),              intent(IN)    :: of_value       !< Attribute value
-  integer(I4P),     optional,    intent(IN)    :: cf      !< Current file index (for concurrent files IO).
-  character(len=:), allocatable, intent(INOUT) :: buffer  !< String 
+  integer(I4P),     optional,    intent(IN)    :: cf             !< Current file index (for concurrent files IO).
+  character(len=:), allocatable, intent(INOUT) :: buffer         !< String 
   character(len=:), allocatable, intent(OUT), optional :: content!< String with the content inside 'to_find' element
-  integer(I4P)                                 :: rf      !< Real file index
-  integer(I4P)                                 :: E_IO    !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
+  integer(I4P)                                 :: rf             !< Real file index
+  integer(I4P)                                 :: E_IO           !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
   character(len=:), allocatable                :: strng
   integer(I4P)                                 :: pos
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -787,35 +788,36 @@ contains
   endif
   pos = 1; if (present(from)) pos = from
   if(present(content)) content = ''
-  E_IO = read_record(buffer, from=pos, cf=rf)
+  E_IO = read_record(buffer, from=pos, cf=rf); if(E_IO /= 0) return
   do !search the beginnig of the mark 'inside' from position 'pos'
     buffer = trim(adjustlt(Upper_Case(buffer)))
     if (index(buffer, '<'//trim(adjustlt(Upper_Case(inside)))) > 0) exit !Mark 'inside' founded once
-    E_IO = read_record(buffer)
-    if(E_IO /= 0) return
+    E_IO = read_record(buffer); if(E_IO /= 0) exit
   enddo
-  do !search 'repeat' times the mark 'to_find'
-    E_IO = read_record(buffer, cf=rf)
-    buffer = trim(adjustlt(Upper_Case(buffer)))
-    if (index(buffer, '</'//trim(adjustlt(Upper_Case(inside)))) > 0) then
-      E_IO = -1_I4P ! Not found
-      return
-    endif
-    if (index(buffer, '<'//trim(adjustlt(Upper_Case(to_find)))) > 0) then
-      if (len_trim(of_value) == 0) exit !there is no attribute value to seach
-      call get_char(buffer, with_attribute, strng, E_IO=E_IO)
-      if (E_IO==0 .and. trim(adjustlt(Upper_Case(strng))) == trim(adjustlt(Upper_Case(of_value)))) then  !Attribute match the value
-        if (index(buffer, '/>') == 0 .and. index(buffer, '</'//trim(adjustlt(Upper_Case(to_find)))) == 0) then
-          do
-            E_IO = read_record(strng, cf=rf)
-            if (index(trim(adjustlt(Upper_Case(strng))), '</'//trim(adjustlt(Upper_Case(to_find)))) > 0) exit
-            content = content//strng
-          enddo
-        endif
-        exit
+  if(E_IO == 0) then
+    do !search 'repeat' times the mark 'to_find'
+      E_IO = read_record(buffer, cf=rf); if(E_IO /= 0) exit
+      buffer = trim(adjustlt(Upper_Case(buffer)))
+      if (index(buffer, '</'//trim(adjustlt(Upper_Case(inside)))) > 0) then
+        E_IO = -1_I4P; return ! Not found
       endif
-    end if
-  enddo
+      if (index(buffer, '<'//trim(adjustlt(Upper_Case(to_find)))) > 0) then
+        if (len_trim(of_value) == 0) exit !there is no attribute value to seach
+        call get_char(buffer, with_attribute, strng, E_IO=E_IO)
+        if (E_IO==0 .and. trim(adjustlt(Upper_Case(strng))) == trim(adjustlt(Upper_Case(of_value)))) then  !Attribute match the value
+          if (present(content) .and. index(buffer, '/>') == 0 .and. &
+              index(buffer, '</'//trim(adjustlt(Upper_Case(to_find)))) == 0) then
+            do
+              E_IO = read_record(strng, cf=rf); if(E_IO /= 0) exit
+              if (index(trim(adjustlt(Upper_Case(strng))), '</'//trim(adjustlt(Upper_Case(to_find)))) > 0) exit
+              content = content//strng
+            enddo
+          endif
+          exit
+        endif
+      endif
+    enddo
+  endif
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -6476,7 +6478,7 @@ contains
         rewind(unit=vtk(rf)%u, iostat=E_IO)
         np = 0
         do
-          E_IO = read_record(s_buffer, cf=rf)
+          E_IO = read_record(s_buffer, cf=rf); if(E_IO /= 0) exit
           s_buffer = trim(adjustl(Upper_Case(s_buffer)))
           if (index(s_buffer, '</'//trim(Upper_Case(vtk(rf)%topology))) > 0) exit !end of ASCII header section found
           if (index(s_buffer, '<PIECE') > 0) np = np + 1
@@ -6565,7 +6567,7 @@ contains
         rewind(unit=vtk(rf)%u, iostat=E_IO)
         np = 0
         do
-          E_IO = read_record(s_buffer, cf=rf)
+          E_IO = read_record(s_buffer, cf=rf); if(E_IO /= 0) exit
           s_buffer = trim(adjustl(Upper_Case(s_buffer)))
           if (index(s_buffer, '</'//trim(Upper_Case(vtk(rf)%topology))) > 0) exit !end of ASCII header section found
           if (index(s_buffer, '<PIECE') > 0) np = np + 1
@@ -6575,7 +6577,7 @@ contains
         rewind(unit=vtk(rf)%u, iostat=E_IO)
         read(unit=vtk(rf)%u,iostat=E_IO) c1
         do 
-          read(unit=vtk(rf)%u,iostat=E_IO) c2
+          read(unit=vtk(rf)%u,iostat=E_IO) c2; if(E_IO /= 0) exit
           if (iachar(c1)==10 .and. c2 =='_') exit
           c1 = c2
         enddo
@@ -7759,19 +7761,19 @@ contains
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
-        if(E_IO == 0) then      
-          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', buffer=s_buffer)
-          call get_int(buffer=s_buffer,  attrib='offset', val=offsX, E_IO=E_IO)
-          call get_char(buffer=s_buffer, attrib='format', val=fmtX,  E_IO=E_IO)
-          call get_char(buffer=s_buffer, attrib='type',   val=typeX, E_IO=E_IO)
-          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', buffer=s_buffer)
-          call get_int(buffer=s_buffer,  attrib='offset', val=offsY, E_IO=E_IO)
-          call get_char(buffer=s_buffer, attrib='format', val=fmtY,  E_IO=E_IO)
-          call get_char(buffer=s_buffer, attrib='type',   val=typeY, E_IO=E_IO)
-          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', buffer=s_buffer)
-          call get_int(buffer=s_buffer,  attrib='offset', val=offsZ, E_IO=E_IO)
-          call get_char(buffer=s_buffer, attrib='format', val=fmtZ,  E_IO=E_IO)
-          call get_char(buffer=s_buffer, attrib='type',   val=typeZ, E_IO=E_IO)
+        E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', buffer=s_buffer)
+        call get_int(buffer=s_buffer,  attrib='offset', val=offsX, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmtX,  E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type',   val=typeX, E_IO=E_IO)
+        E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', buffer=s_buffer)
+        call get_int(buffer=s_buffer,  attrib='offset', val=offsY, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmtY,  E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type',   val=typeY, E_IO=E_IO)
+        E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', buffer=s_buffer)
+        call get_int(buffer=s_buffer,  attrib='offset', val=offsZ, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmtZ,  E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type',   val=typeZ, E_IO=E_IO)
+        if(E_IO == 0) then 
           if (trim(adjustlt(Upper_Case(fmtX)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(fmtY)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(fmtZ)))/='APPENDED' .or. &
@@ -7885,19 +7887,19 @@ contains
       call get_char(buffer=s_buffer, attrib='Extent', val=aux, E_IO=E_IO)
       if(E_IO == 0) then      
         read(aux,*, iostat=E_IO) nx1,nx2,ny1,ny2,nz1,nz2
-        if(E_IO == 0) then      
-          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', buffer=s_buffer)
-          call get_int(buffer=s_buffer,  attrib='offset', val=offsX, E_IO=E_IO)
-          call get_char(buffer=s_buffer, attrib='format', val=fmtX,  E_IO=E_IO)
-          call get_char(buffer=s_buffer, attrib='type',   val=typeX, E_IO=E_IO)
-          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', buffer=s_buffer)
-          call get_int(buffer=s_buffer,  attrib='offset', val=offsY, E_IO=E_IO)
-          call get_char(buffer=s_buffer, attrib='format', val=fmtY,  E_IO=E_IO)
-          call get_char(buffer=s_buffer, attrib='type',   val=typeY, E_IO=E_IO)
-          E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', buffer=s_buffer)
-          call get_int(buffer=s_buffer,  attrib='offset', val=offsZ, E_IO=E_IO)
-          call get_char(buffer=s_buffer, attrib='format', val=fmtZ,  E_IO=E_IO)
-          call get_char(buffer=s_buffer, attrib='type',   val=typeZ, E_IO=E_IO)
+        E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='X', buffer=s_buffer)
+        call get_int(buffer=s_buffer,  attrib='offset', val=offsX, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmtX,  E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type',   val=typeX, E_IO=E_IO)
+        E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Y', buffer=s_buffer)
+        call get_int(buffer=s_buffer,  attrib='offset', val=offsY, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmtY,  E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type',   val=typeY, E_IO=E_IO)
+        E_IO = search(from=pos, inside='Coordinates', to_find='DataArray', with_attribute='Name', of_value='Z', buffer=s_buffer)
+        call get_int(buffer=s_buffer,  attrib='offset', val=offsZ, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='format', val=fmtZ,  E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type',   val=typeZ, E_IO=E_IO)
+        if(E_IO == 0) then 
           if (trim(adjustlt(Upper_Case(fmtX)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(fmtY)))/='APPENDED' .or. &
               trim(adjustlt(Upper_Case(fmtZ)))/='APPENDED' .or. &
