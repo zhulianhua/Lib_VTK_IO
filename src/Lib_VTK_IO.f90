@@ -7633,11 +7633,8 @@ contains
             s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
             XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
             allocate(X(nx1:nx2,ny1:ny2,nz1:nz2), Y(nx1:nx2,ny1:ny2,nz1:nz2), Z(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
-            s=1
-            do k=nz1,nz2-nz1;do j=ny1,ny2;do i=nx1,nx2;
-              X(i,j,k) = XYZp(s);s=s+1
-              Y(i,j,k) = XYZp(s);s=s+1
-              Z(i,j,k) = XYZp(s);s=s+1
+            s=1;do k=nz1,nz2-nz1;do j=ny1,ny2;do i=nx1,nx2;
+              X(i,j,k)=XYZp(s); s=s+1; Y(i,j,k)=XYZp(s); s=s+1; Z(i,j,k)=XYZp(s); s=s+1
             enddo;enddo;enddo;
             if(allocated(XYZp)) deallocate(XYZp)
           endif
@@ -7763,11 +7760,8 @@ contains
             s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
             XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
             allocate(X(nx1:nx2,ny1:ny2,nz1:nz2), Y(nx1:nx2,ny1:ny2,nz1:nz2), Z(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
-            s=1
-            do k=nz1,nz2-nz1;do j=ny1,ny2;do i=nx1,nx2;
-              X(i,j,k) = XYZp(s);s=s+1
-              Y(i,j,k) = XYZp(s);s=s+1
-              Z(i,j,k) = XYZp(s);s=s+1
+            s=1;do k=nz1,nz2-nz1;do j=ny1,ny2;do i=nx1,nx2;
+              X(i,j,k)=XYZp(s); s=s+1; Y(i,j,k)=XYZp(s); s=s+1; Z(i,j,k)=XYZp(s); s=s+1
             enddo;enddo;enddo;
             if(allocated(XYZp)) deallocate(XYZp)
           endif
@@ -7890,8 +7884,7 @@ contains
             s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
             XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
             allocate(XYZ(3,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)      
-            s=1
-            XYZ(:,:,:,:) = reshape(XYZp, (/3,nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+            XYZ(1:3,nx1:nx2,ny1:ny2,nz1:nz2) = reshape(XYZp, (/3,nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
             if(allocated(XYZp)) deallocate(XYZp)
           endif
         endif
@@ -8014,8 +8007,7 @@ contains
             s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
             XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
             allocate(XYZ(3,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)      
-            s=1
-            XYZ(:,:,:,:) = reshape(XYZp, (/3,nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+            XYZ(1:3,nx1:nx2,ny1:ny2,nz1:nz2) = reshape(XYZp, (/3,nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
             if(allocated(XYZp)) deallocate(XYZp)
           endif
         endif
@@ -8470,8 +8462,8 @@ contains
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer                                :: np, pos, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, pos, offs, N_Byte, s
+  integer(I1P), allocatable              :: dI1P(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------  
@@ -8488,7 +8480,7 @@ contains
       E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, buffer=s_buffer)
       inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
       call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
-      ! get appended array offsets
+      ! get ascii array offsets
       allocate(offset(NC), stat=E_IO)
       E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Offsets', &
                     buffer=s_buffer, content=data)
@@ -8499,7 +8491,7 @@ contains
         E_IO = -1_I4P
       else
         read(data, fmt=*, iostat=E_IO) offset 
-        ! get appended array cell_type
+        ! get ascii array cell_type
         allocate(cell_type(NC), stat=E_IO)
         E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Types', &
                       buffer=s_buffer, content=data)
@@ -8510,7 +8502,7 @@ contains
           E_IO = -1_I4P
         else
           read(data, fmt=*, iostat=E_IO) cell_type
-          ! get appended array connect
+          ! get ascii array connect
           allocate(connect(offset(NC)), stat=E_IO)
           E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Connectivity', &
                         buffer=s_buffer, content=data)
@@ -8527,7 +8519,65 @@ contains
       endif
 
     case(binary)
-! Not implemented
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='UnstructuredGrid', to_find='Piece', repeat=np, buffer=s_buffer)
+      inquire(unit=vtk(rf)%u, pos=pos, iostat=E_IO) !annotate the current position in the file
+      call get_int(buffer=s_buffer, attrib='NumberOfCells', val=NC, E_IO=E_IO)
+      ! get binary array offsets
+!      allocate(offset(NC), stat=E_IO)
+      E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Offsets', &
+                    buffer=s_buffer, content=data)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT32') then
+        E_IO = -1_I4P
+      else
+        ! Decode packed base64 data
+        data=trim(adjustlt(data))
+        allocate(dI1P(NC*int(BYI4P,I4P)+int(BYI4P,I4P)))
+        call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+        ! Unpack data [1xI4P,3*NNxR8P]
+        N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+        s = size(transfer(dI1P(int(BYI4P,I4P)+1:),offset)); allocate(offset(1:s))
+        offset = transfer(dI1P(int(BYI4P,I4P)+1:),offset); if(allocated(dI1P)) deallocate(dI1P)
+        ! get binary array cell_type
+        E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Types', &
+                      buffer=s_buffer, content=data)
+        call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+        call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT8') then
+          E_IO = -1_I4P
+        else
+          ! Decode packed base64 data
+          data=trim(adjustlt(data))
+          allocate(dI1P(NC*int(BYI1P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,NcxI1P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),cell_type)); allocate(cell_type(1:s))
+          cell_type = transfer(dI1P(int(BYI4P,I4P)+1:),cell_type); if(allocated(dI1P)) deallocate(dI1P)
+          ! get binary array connect
+          E_IO = search(from=pos,inside='Cells', to_find='DataArray', with_attribute='Name', of_value='Connectivity', &
+                        buffer=s_buffer, content=data)
+          call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+          call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+          if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+              trim(adjustlt(Upper_Case(type)))/='INT32') then
+            E_IO = -1_I4P
+          else
+            data=trim(adjustlt(data))
+            allocate(dI1P(offset(NC)*int(BYI4P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,offset(Nc)xI1P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),connect)); allocate(connect(1:s))
+            connect = transfer(dI1P(int(BYI4P,I4P)+1:),connect); if(allocated(dI1P)) deallocate(dI1P)
+          endif
+        endif
+        if(allocated(data)) deallocate(data)
+      endif
 
     case(raw)
 
@@ -8706,8 +8756,8 @@ end function
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, offs
-  integer(I4P)                        :: N_Byte
+  integer(I4P)                        :: np, offs, N_Byte, s
+  integer(I1P), allocatable           :: dI1P(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -8735,7 +8785,19 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+          E_IO = -1_I4P
+        else
+          ! Decode packed base64 data
+          data=trim(adjustlt(data))
+          allocate(dI1P(NC_NN*NCOMP*int(BYR8P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,NN_NC*NCOMPxR8P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte); s = size(transfer(dI1P(int(BYI4P,I4P)+1:),var))
+          if(s /= NC_NN*NCOMP) E_IO = -1_I4P
+          var = transfer(dI1P(int(BYI4P,I4P)+1:),var); if(allocated(dI1P)) deallocate(dI1P)
+        endif
 
       case(raw)
         if(E_IO == 0) then
@@ -8770,8 +8832,8 @@ end function
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, offs
-  integer(I4P)                        :: N_Byte
+  integer(I4P)                        :: np, offs, N_Byte, s
+  integer(I1P), allocatable           :: dI1P(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -8799,7 +8861,19 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+          E_IO = -1_I4P
+        else
+          ! Decode packed base64 data
+          data=trim(adjustlt(data))
+          allocate(dI1P(NC_NN*NCOMP**int(BYR4P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,NN_NC*NCOMPxR8P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte); s = size(transfer(dI1P(int(BYI4P,I4P)+1:),var))
+          if(s /= NC_NN*NCOMP) E_IO = -1_I4P
+          var = transfer(dI1P(int(BYI4P,I4P)+1:),var); if(allocated(dI1P)) deallocate(dI1P)
+        endif
 
       case(raw)
         if(E_IO == 0) then
@@ -8834,8 +8908,8 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte, s
+  integer(I1P), allocatable              :: dI1P(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -8863,7 +8937,19 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT64') then
+          E_IO = -1_I4P
+        else
+          ! Decode packed base64 data
+          data=trim(adjustlt(data))
+          allocate(dI1P(NC_NN*NCOMP*int(BYI8P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,NN_NC*NCOMPxI8P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte); s = size(transfer(dI1P(int(BYI4P,I4P)+1:),var))
+          if(s /= NC_NN*NCOMP) E_IO = -1_I4P
+          var = transfer(dI1P(int(BYI4P,I4P)+1:),var); if(allocated(dI1P)) deallocate(dI1P)
+        endif
 
       case(raw)
         if(E_IO == 0) then
@@ -8898,8 +8984,8 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte, s
+  integer(I1P), allocatable              :: dI1P(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -8927,7 +9013,19 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT32') then
+          E_IO = -1_I4P
+        else
+          ! Decode packed base64 data
+          data=trim(adjustlt(data))
+          allocate(dI1P(NC_NN*NCOMP*int(BYI4P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,NN_NC*NCOMPxI4P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte); s = size(transfer(dI1P(int(BYI4P,I4P)+1:),var))
+          if(s /= NC_NN*NCOMP) E_IO = -1_I4P
+          var = transfer(dI1P(int(BYI4P,I4P)+1:),var); if(allocated(dI1P)) deallocate(dI1P)
+        endif
 
       case(raw)
         if(E_IO == 0) then
@@ -8962,8 +9060,8 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte, s
+  integer(I1P), allocatable              :: dI1P(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -8991,7 +9089,19 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT16') then
+          E_IO = -1_I4P
+        else
+          ! Decode packed base64 data
+          data=trim(adjustlt(data))
+          allocate(dI1P(NC_NN*NCOMP*int(BYI2P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,NN_NC*NCOMPxI2P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte); s = size(transfer(dI1P(int(BYI4P,I4P)+1:),var))
+          if(s /= NC_NN*NCOMP) E_IO = -1_I4P
+          var = transfer(dI1P(int(BYI4P,I4P)+1:),var); if(allocated(dI1P)) deallocate(dI1P)
+        endif
 
       case(raw)
         if(E_IO == 0) then
@@ -9026,8 +9136,8 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte, s
+  integer(I1P), allocatable              :: dI1P(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9055,7 +9165,19 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT8') then
+          E_IO = -1_I4P
+        else
+          ! Decode packed base64 data
+          data=trim(adjustlt(data))
+          allocate(dI1P(NC_NN*NCOMP*int(BYI1P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,NN_NC*NCOMPxI1P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte); s = size(transfer(dI1P(int(BYI4P,I4P)+1:),var))
+          if(s /= NC_NN*NCOMP) E_IO = -1_I4P
+          var = transfer(dI1P(int(BYI4P,I4P)+1:),var); if(allocated(dI1P)) deallocate(dI1P)
+        endif
 
       case(raw)
         if(E_IO == 0) then
@@ -9092,8 +9214,9 @@ end function
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, offs
-  integer(I4P)                        :: N_Byte, i
+  integer(I4P)                        :: np, offs, N_Byte, i, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9122,7 +9245,21 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+          E_IO = -1_I4P
+        else
+          ! Decode base64 packed data
+          data=trim(adjustlt(data))
+          allocate(dI1P(3*NC_NN*int(BYR8P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,3*NC_NNxR8P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          do i=1,NC_NN; varX(i)=XYZp(i*3-2); varY(i)=XYZp(i*3-1); varZ(i)=XYZp(i*3); enddo
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
 
       case(raw)
         if(E_IO == 0) then
@@ -9159,8 +9296,9 @@ end function
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, offs
-  integer(I4P)                        :: N_Byte, i
+  integer(I4P)                        :: np, offs, N_Byte, i, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9189,7 +9327,22 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+          E_IO = -1_I4P
+        else
+          ! Decode base64 packed data
+          data=trim(adjustlt(data))
+          allocate(dI1P(3*NC_NN*int(BYR4P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,3*NC_NNxR4P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          do i=1,NC_NN; varX(i)=XYZp(i*3-2); varY(i)=XYZp(i*3-1); varZ(i)=XYZp(i*3); enddo
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
+
 
       case(raw)
         if(E_IO == 0) then
@@ -9226,8 +9379,9 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte, i
+  integer(I4P)                           :: np, offs, N_Byte, i, s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9256,7 +9410,21 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT64') then
+          E_IO = -1_I4P
+        else
+          ! Decode base64 packed data
+          data=trim(adjustlt(data))
+          allocate(dI1P(3*NC_NN*int(BYI8P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,3*NC_NNxI8P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          do i=1,NC_NN; varX(i)=XYZp(i*3-2); varY(i)=XYZp(i*3-1); varZ(i)=XYZp(i*3); enddo
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
 
       case(raw)
         if(E_IO == 0) then
@@ -9293,8 +9461,10 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte, i
+  integer(I4P)                           :: np, offs, N_Byte, i, s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I4P), allocatable              :: XYZp(:)
+
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9323,7 +9493,21 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT32') then
+          E_IO = -1_I4P
+        else
+          ! Decode base64 packed data
+          data=trim(adjustlt(data))
+          allocate(dI1P(3*NC_NN*int(BYI4P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,3*NC_NNxI4P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          do i=1,NC_NN; varX(i)=XYZp(i*3-2); varY(i)=XYZp(i*3-1); varZ(i)=XYZp(i*3); enddo
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
 
       case(raw)
         if(E_IO == 0) then
@@ -9360,8 +9544,9 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte, i
+  integer(I4P)                           :: np, offs, N_Byte, i, s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I2P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9390,7 +9575,21 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT16') then
+          E_IO = -1_I4P
+        else
+          ! Decode base64 packed data
+          data=trim(adjustlt(data))
+          allocate(dI1P(3*NC_NN*int(BYI2P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,3*NC_NNxI2P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          do i=1,NC_NN; varX(i)=XYZp(i*3-2); varY(i)=XYZp(i*3-1); varZ(i)=XYZp(i*3); enddo
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
 
       case(raw)
         if(E_IO == 0) then
@@ -9427,8 +9626,9 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte, i
+  integer(I4P)                           :: np, offs, N_Byte, i, s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I1P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9457,7 +9657,22 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT8') then
+          E_IO = -1_I4P
+        else
+          ! Decode base64 packed data
+          data=trim(adjustlt(data))
+          allocate(dI1P(3*NC_NN*int(BYI1P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,3*NC_NNxI1P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          do i=1,NC_NN; varX(i)=XYZp(i*3-2); varY(i)=XYZp(i*3-1); varZ(i)=XYZp(i*3); enddo
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
+
 
       case(raw)
         if(E_IO == 0) then
@@ -9492,8 +9707,9 @@ end function
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, offs
-  integer(I4P)                        :: N_Byte
+  integer(I4P)                        :: np, offs, N_Byte, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9521,7 +9737,20 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+          E_IO = -1_I4P
+        else
+          data=trim(adjustlt(data))
+          allocate(dI1P(NCOMP*NC_NN*int(BYR8P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,NCOMP*NC_NNxR8P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          var = reshape(XYZp,(/NCOMP,NC_NN/))
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
 
       case(raw)
         if(E_IO == 0) then
@@ -9556,8 +9785,9 @@ end function
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, offs
-  integer(I4P)                        :: N_Byte
+  integer(I4P)                        :: np, offs, N_Byte, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9585,7 +9815,20 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+          E_IO = -1_I4P
+        else
+          data=trim(adjustlt(data))
+          allocate(dI1P(NCOMP*NC_NN*int(BYR4P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,NCOMP*NC_NNxR4P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          var = reshape(XYZp,(/NCOMP,NC_NN/))
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
 
       case(raw)
         if(E_IO == 0) then
@@ -9605,7 +9848,7 @@ end function
 
   function VTK_VAR_XML_LIST_1DA_I8_READ(var_location,varname,NC_NN,NCOMP,var,npiece,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
-  !< Function for reading field of scalar variable (I4P, 1D array).
+  !< Function for reading field of scalar variable (I8P, 1D array).
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
   character(*),              intent(IN)  :: var_location !< location of variables: CELL for cell-centered, NODE for node-centered
@@ -9620,8 +9863,9 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte, s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9649,7 +9893,20 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT64') then
+          E_IO = -1_I4P
+        else
+          data=trim(adjustlt(data))
+          allocate(dI1P(NCOMP*NC_NN*int(BYI8P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,NCOMP*NC_NNxI8P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          var = reshape(XYZp,(/NCOMP,NC_NN/))
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
 
       case(raw)
         if(E_IO == 0) then
@@ -9684,8 +9941,9 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte, s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9713,7 +9971,20 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT32') then
+          E_IO = -1_I4P
+        else
+          data=trim(adjustlt(data))
+          allocate(dI1P(NCOMP*NC_NN*int(BYI4P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,NCOMP*NC_NNxI4P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          var = reshape(XYZp,(/NCOMP,NC_NN/))
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
 
       case(raw)
         if(E_IO == 0) then
@@ -9748,8 +10019,9 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte, s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I2P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9777,7 +10049,21 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT16') then
+          E_IO = -1_I4P
+        else
+          data=trim(adjustlt(data))
+          allocate(dI1P(NCOMP*NC_NN*int(BYI2P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,NCOMP*NC_NNxI2P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          var = reshape(XYZp,(/NCOMP,NC_NN/))
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
+
 
       case(raw)
         if(E_IO == 0) then
@@ -9812,8 +10098,9 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte, s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I1P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9841,7 +10128,21 @@ end function
         endif
 
       case(binary)
-! Not implemented
+        if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+            trim(adjustlt(Upper_Case(type)))/='INT8') then
+          E_IO = -1_I4P
+        else
+          data=trim(adjustlt(data))
+          allocate(dI1P(NCOMP*NC_NN*int(BYI1P,I4P)+int(BYI4P,I4P)))
+          call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+          ! Unpack data [1xI4P,NCOMP*NC_NNxI1P]
+          N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+          s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+          XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+          var = reshape(XYZp,(/NCOMP,NC_NN/))
+          if(allocated(XYZp)) deallocate(XYZp)
+        endif
+
 
       case(raw)
         if(E_IO == 0) then
@@ -9876,9 +10177,10 @@ end function
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, offs
-  integer(I4P)                        :: N_Byte
   integer(I4P)                        :: nx1,nx2,ny1,ny2,nz1,nz2
+  integer(I4P)                        :: np, offs, N_Byte, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9889,39 +10191,55 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-
-  if(E_IO == 0) then
-    allocate(var(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
-
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) var
-        endif
-
-      case(binary)
-! Not implemented
-
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+    
+      if(E_IO == 0) then
+        allocate(var(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+    
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) var
+            endif
+    
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+              E_IO = -1_I4P
+            else
+              data=trim(adjustlt(data))
+              allocate(dI1P((nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYR8P,I4P)+int(BYI4P,I4P)))
+              call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+              ! Unpack data [1xI4P,(nx2-nx1+1)*(ny2-ny1+1)*(z2-nz1+1)xR8P]
+              N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+              s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+              XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+              var(:,:,:) = reshape(XYZp, (/nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+              if(allocated(XYZp)) deallocate(XYZp)
+            endif
+    
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+              endif
           endif
+    
+        endselect
       endif
-
-    endselect
-  endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -9943,9 +10261,10 @@ end function
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, offs
-  integer(I4P)                        :: N_Byte
   integer(I4P)                        :: nx1,nx2,ny1,ny2,nz1,nz2
+  integer(I4P)                        :: np, offs, N_Byte, s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -9956,46 +10275,62 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
   ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+    
+      if(E_IO == 0) then
+        allocate(var(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+    
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) var
+            endif
+    
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+              E_IO = -1_I4P
+            else
+              data=trim(adjustlt(data))
+              allocate(dI1P((nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYR8P,I4P)+int(BYI4P,I4P)))
+              call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+              ! Unpack data [1xI4P,(nx2-nx1+1)*(ny2-ny1+1)*(z2-nz1+1)xR4P]
+              N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+              s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+              XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+              var(:,:,:) = reshape(XYZp, (/nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+              if(allocated(XYZp)) deallocate(XYZp)
+            endif
 
-  if(E_IO == 0) then
-    allocate(var(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
-
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) var
-        endif
-
-      case(binary)
-! Not implemented
-
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+              endif
           endif
+    
+        endselect
       endif
-
-    endselect
-  endif
+  end select
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
 
   function VTK_VAR_XML_SCAL_3DA_I8_READ(var_location,varname,NC_NN,NCOMP,var,npiece,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
-  !< Function for reading field of scalar variable (I4P, 1D array).
+  !< Function for reading field of scalar variable (I8P, 1D array).
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
   character(*),              intent(IN)  :: var_location !< location of variables: CELL for cell-centered, NODE for node-centered
@@ -10010,9 +10345,10 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
   integer(I4P)                           :: nx1,nx2,ny1,ny2,nz1,nz2
+  integer(I4P)                           :: np, offs, N_Byte, s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10023,39 +10359,55 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-
-  if(E_IO == 0) then
-    allocate(var(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
-
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='INT64') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) var
-        endif
-
-      case(binary)
-! Not implemented
-
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='INT64') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+    
+      if(E_IO == 0) then
+        allocate(var(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+    
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT64') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) var
+            endif
+    
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT64') then
+              E_IO = -1_I4P
+            else
+              data=trim(adjustlt(data))
+              allocate(dI1P((nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYI8P,I4P)+int(BYI4P,I4P)))
+              call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+              ! Unpack data [1xI4P,(nx2-nx1+1)*(ny2-ny1+1)*(z2-nz1+1)xI8P]
+              N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+              s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+              XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+              var(:,:,:) = reshape(XYZp, (/nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+              if(allocated(XYZp)) deallocate(XYZp)
+            endif
+    
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='INT64') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+              endif
           endif
+    
+        endselect
       endif
-
-    endselect
-  endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -10077,9 +10429,10 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
   integer(I4P)                           :: nx1,nx2,ny1,ny2,nz1,nz2
+  integer(I4P)                           :: np, offs, N_Byte, s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10090,39 +10443,55 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-
-  if(E_IO == 0) then
-    allocate(var(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
-
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='INT32') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) var
-        endif
-
-      case(binary)
-! Not implemented
-
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='INT32') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+    
+      if(E_IO == 0) then
+        allocate(var(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+    
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT32') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) var
+            endif
+    
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT32') then
+              E_IO = -1_I4P
+            else
+              data=trim(adjustlt(data))
+              allocate(dI1P((nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYI4P,I4P)+int(BYI4P,I4P)))
+              call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+              ! Unpack data [1xI4P,(nx2-nx1+1)*(ny2-ny1+1)*(z2-nz1+1)xI4P]
+              N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+              s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+              XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+                  var(:,:,:) = reshape(XYZp, (/nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+                  if(allocated(XYZp)) deallocate(XYZp)
+            endif
+    
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='INT32') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+              endif
           endif
+    
+        endselect
       endif
-
-    endselect
-  endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -10144,9 +10513,10 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
   integer(I4P)                           :: nx1,nx2,ny1,ny2,nz1,nz2
+  integer(I4P)                           :: np, offs, N_Byte, s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I2P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10157,39 +10527,55 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
 
-  if(E_IO == 0) then
-    allocate(var(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+      if(E_IO == 0) then
+        allocate(var(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
 
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='INT16') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) var
-        endif
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT16') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) var
+            endif
 
-      case(binary)
-! Not implemented
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT16') then
+              E_IO = -1_I4P
+            else
+              data=trim(adjustlt(data))
+              allocate(dI1P((nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYI2P,I4P)+int(BYI4P,I4P)))
+              call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+              ! Unpack data [1xI4P,(nx2-nx1+1)*(ny2-ny1+1)*(z2-nz1+1)xI2P]
+              N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+              s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+              XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+              var(:,:,:) = reshape(XYZp, (/nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+              if(allocated(XYZp)) deallocate(XYZp)
+            endif
 
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='INT16') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='INT16') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+              endif
           endif
-      endif
 
-    endselect
-  endif
+        endselect
+      endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -10211,9 +10597,10 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
   integer(I4P)                           :: nx1,nx2,ny1,ny2,nz1,nz2
+  integer(I4P)                           :: np, offs, N_Byte, s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I1P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10224,39 +10611,55 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+    
+      if(E_IO == 0) then
+        allocate(var(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+    
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT8') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) var
+            endif
+    
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT8') then
+              E_IO = -1_I4P
+            else
+              data=trim(adjustlt(data))
+              allocate(dI1P((nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYI1P,I4P)+int(BYI4P,I4P)))
+              call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+              ! Unpack data [1xI4P,(nx2-nx1+1)*(ny2-ny1+1)*(z2-nz1+1)xI1P]
+              N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+              s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+              XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+              var(:,:,:) = reshape(XYZp, (/nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+              if(allocated(XYZp)) deallocate(XYZp)
+            endif
+    
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='INT8') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+              endif
+            endif
 
-  if(E_IO == 0) then
-    allocate(var(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
-
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='INT8') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) var
-        endif
-
-      case(binary)
-! Not implemented
-
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='INT8') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
-          endif
+        endselect
       endif
-
-    endselect
-  endif
+  end select
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -10280,10 +10683,11 @@ end function
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, offs
-  integer(I4P)                        :: N_Byte
+  integer(I4P)                        :: np, offs, N_Byte
   integer(I4P)                        :: nx1,nx2,ny1,ny2,nz1,nz2
-  integer(I4P)                        :: i,j,k
+  integer(I4P)                        :: i,j,k,s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10294,43 +10698,64 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-  if(NCOMP/=3) E_IO=-1_I4P
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+      if(NCOMP/=3) E_IO=-1_I4P
 
-  if(E_IO == 0) then
-    allocate(varX(nx1:nx2,ny1:ny2,nz1:nz2), varY(nx1:nx2,ny1:ny2,nz1:nz2), &
-             varZ(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+      if(E_IO == 0) then
+        allocate(varX(nx1:nx2,ny1:ny2,nz1:nz2), varY(nx1:nx2,ny1:ny2,nz1:nz2), &
+                 varZ(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
 
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) & 
-              (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
-        endif
-
-      case(binary)
-! Not implemented
-
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, & 
-              (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+            endif
+    
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+            endif
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYR8P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)xR8P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            s=1;do k=nz1,nz2-nz1;do j=ny1,ny2;do i=nx1,nx2;
+              varX(i,j,k)=XYZp(s); s=s+1; varY(i,j,k)=XYZp(s); s=s+1; varZ(i,j,k)=XYZp(s); s=s+1
+            enddo;enddo;enddo;
+            if(allocated(XYZp)) deallocate(XYZp)
+    
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+              endif
           endif
+    
+        endselect
       endif
-
-    endselect
-  endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -10354,10 +10779,11 @@ end function
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, offs
-  integer(I4P)                        :: N_Byte
+  integer(I4P)                        :: np, offs, N_Byte
   integer(I4P)                        :: nx1,nx2,ny1,ny2,nz1,nz2
-  integer(I4P)                        :: i,j,k
+  integer(I4P)                        :: i,j,k,s
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10368,50 +10794,71 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-  if(NCOMP/=3) E_IO=-1_I4P
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+      if(NCOMP/=3) E_IO=-1_I4P
+    
+      if(E_IO == 0) then
+        allocate(varX(nx1:nx2,ny1:ny2,nz1:nz2), varY(nx1:nx2,ny1:ny2,nz1:nz2), &
+                 varZ(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+    
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+            endif
 
-  if(E_IO == 0) then
-    allocate(varX(nx1:nx2,ny1:ny2,nz1:nz2), varY(nx1:nx2,ny1:ny2,nz1:nz2), &
-             varZ(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+            endif
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYR4P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)xR4P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            s=1;do k=nz1,nz2-nz1;do j=ny1,ny2;do i=nx1,nx2;
+              varX(i,j,k)=XYZp(s); s=s+1; varY(i,j,k)=XYZp(s); s=s+1; varZ(i,j,k)=XYZp(s); s=s+1
+            enddo;enddo;enddo;
+            if(allocated(XYZp)) deallocate(XYZp)
 
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) & 
-              (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
-        endif
-
-      case(binary)
-! Not implemented
-
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, & 
-              (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+              endif
           endif
+    
+        endselect
       endif
-
-    endselect
-  endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
 
   function VTK_VAR_XML_VECT_3DA_I8_READ(var_location,varname,NC_NN,NCOMP,varX,varY,varZ,npiece,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
-  !< Function for reading field of scalar variable (I4P, 1D array).
+  !< Function for reading field of scalar variable (I8P, 1D array).
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
   character(*),              intent(IN)  :: var_location !< location of variables: CELL for cell-centered, NODE for node-centered
@@ -10428,10 +10875,11 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte
   integer(I4P)                           :: nx1,nx2,ny1,ny2,nz1,nz2
-  integer(I4P)                           :: i,j,k
+  integer(I4P)                           :: i,j,k,s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10441,44 +10889,64 @@ end function
     rf = cf ; f = cf
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
-
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-  if(NCOMP/=3) E_IO=-1_I4P
-
-  if(E_IO == 0) then
-    allocate(varX(nx1:nx2,ny1:ny2,nz1:nz2), varY(nx1:nx2,ny1:ny2,nz1:nz2), &
-             varZ(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
-
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='INT64') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) & 
-              (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
-        endif
-
-      case(binary)
-! Not implemented
-
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='INT64') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, & 
-              (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+      if(NCOMP/=3) E_IO=-1_I4P
+    
+      if(E_IO == 0) then
+        allocate(varX(nx1:nx2,ny1:ny2,nz1:nz2), varY(nx1:nx2,ny1:ny2,nz1:nz2), &
+                 varZ(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+    
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT64') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+            endif
+    
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT64') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+            endif
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYI8P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)xI8P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            s=1;do k=nz1,nz2-nz1;do j=ny1,ny2;do i=nx1,nx2;
+              varX(i,j,k)=XYZp(s); s=s+1; varY(i,j,k)=XYZp(s); s=s+1; varZ(i,j,k)=XYZp(s); s=s+1
+            enddo;enddo;enddo;
+            if(allocated(XYZp)) deallocate(XYZp)
+    
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='INT64') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+              endif
           endif
+    
+        endselect
       endif
-
-    endselect
-  endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -10502,10 +10970,11 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte
   integer(I4P)                           :: nx1,nx2,ny1,ny2,nz1,nz2
-  integer(I4P)                           :: i,j,k
+  integer(I4P)                           :: i,j,k,s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10516,43 +10985,64 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-  if(NCOMP/=3) E_IO=-1_I4P
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+      if(NCOMP/=3) E_IO=-1_I4P
+    
+      if(E_IO == 0) then
+        allocate(varX(nx1:nx2,ny1:ny2,nz1:nz2), varY(nx1:nx2,ny1:ny2,nz1:nz2), &
+                 varZ(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+    
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT32') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+            endif
+    
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT32') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+            endif
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYI4P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)xI4P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            s=1;do k=nz1,nz2-nz1;do j=ny1,ny2;do i=nx1,nx2;
+              varX(i,j,k)=XYZp(s); s=s+1; varY(i,j,k)=XYZp(s); s=s+1; varZ(i,j,k)=XYZp(s); s=s+1
+            enddo;enddo;enddo;
+            if(allocated(XYZp)) deallocate(XYZp)
 
-  if(E_IO == 0) then
-    allocate(varX(nx1:nx2,ny1:ny2,nz1:nz2), varY(nx1:nx2,ny1:ny2,nz1:nz2), &
-             varZ(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
-
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='INT32') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) & 
-              (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
-        endif
-
-      case(binary)
-! Not implemented
-
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='INT32') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, & 
-              (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='INT32') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+              endif
           endif
+    
+        endselect
       endif
-
-    endselect
-  endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -10576,10 +11066,11 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte
   integer(I4P)                           :: nx1,nx2,ny1,ny2,nz1,nz2
-  integer(I4P)                           :: i,j,k
+  integer(I4P)                           :: i,j,k,s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I2P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10590,43 +11081,64 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-  if(NCOMP/=3) E_IO=-1_I4P
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+      if(NCOMP/=3) E_IO=-1_I4P
+    
+      if(E_IO == 0) then
+        allocate(varX(nx1:nx2,ny1:ny2,nz1:nz2), varY(nx1:nx2,ny1:ny2,nz1:nz2), &
+                 varZ(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+    
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT16') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+            endif
+    
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT16') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+            endif
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYI2P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)xI2P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            s=1;do k=nz1,nz2-nz1;do j=ny1,ny2;do i=nx1,nx2;
+              varX(i,j,k)=XYZp(s); s=s+1; varY(i,j,k)=XYZp(s); s=s+1; varZ(i,j,k)=XYZp(s); s=s+1
+            enddo;enddo;enddo;
+            if(allocated(XYZp)) deallocate(XYZp)
 
-  if(E_IO == 0) then
-    allocate(varX(nx1:nx2,ny1:ny2,nz1:nz2), varY(nx1:nx2,ny1:ny2,nz1:nz2), &
-             varZ(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
-
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='INT16') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) & 
-              (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
-        endif
-
-      case(binary)
-! Not implemented
-
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='INT16') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, & 
-              (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='INT16') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+              endif
           endif
+    
+        endselect
       endif
-
-    endselect
-  endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -10650,10 +11162,11 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte
   integer(I4P)                           :: nx1,nx2,ny1,ny2,nz1,nz2
-  integer(I4P)                           :: i,j,k
+  integer(I4P)                           :: i,j,k,s
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I1P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10664,43 +11177,64 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-  if(NCOMP/=3) E_IO=-1_I4P
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+      if(NCOMP/=3) E_IO=-1_I4P
+    
+      if(E_IO == 0) then
+        allocate(varX(nx1:nx2,ny1:ny2,nz1:nz2), varY(nx1:nx2,ny1:ny2,nz1:nz2), &
+                 varZ(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+    
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT8') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+            endif
+    
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT8') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+            endif
+            ! Decode base64 packed data
+            data=trim(adjustlt(data))
+            allocate(dI1P(NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYI1P,I4P)+int(BYI4P,I4P)))
+            call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+            ! Unpack data [1xI4P,NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)xI1P]
+            N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+            s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+            XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+            s=1;do k=nz1,nz2-nz1;do j=ny1,ny2;do i=nx1,nx2;
+              varX(i,j,k)=XYZp(s); s=s+1; varY(i,j,k)=XYZp(s); s=s+1; varZ(i,j,k)=XYZp(s); s=s+1
+            enddo;enddo;enddo;
+            if(allocated(XYZp)) deallocate(XYZp)
 
-  if(E_IO == 0) then
-    allocate(varX(nx1:nx2,ny1:ny2,nz1:nz2), varY(nx1:nx2,ny1:ny2,nz1:nz2), &
-             varZ(nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
-
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='INT8') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) & 
-              (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
-        endif
-
-      case(binary)
-! Not implemented
-
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='INT8') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, & 
-              (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='INT8') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, & 
+                  (((varX(i,j,k),varY(i,j,k),varZ(i,j,k), i=nx1,nx2), j=ny1,ny2), k=nz1,nz2)
+              endif
           endif
+    
+        endselect
       endif
-
-    endselect
-  endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -10722,9 +11256,10 @@ end function
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, offs
-  integer(I4P)                        :: N_Byte
+  integer(I4P)                        :: np, offs, N_Byte, s
   integer(I4P)                        :: nx1,nx2,ny1,ny2,nz1,nz2
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10735,40 +11270,57 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-  if(NCOMP/=3) E_IO=-1_I4P
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+      if(NCOMP/=3) E_IO=-1_I4P
 
-  if(E_IO == 0) then
-    allocate(var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+      if(E_IO == 0) then
+        allocate(var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
 
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) var
-        endif
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) var
+            endif
 
-      case(binary)
-! Not implemented
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+              E_IO = -1_I4P
+            else
+              ! Decode base64 packed data
+              data=trim(adjustlt(data))
+              allocate(dI1P(NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYR8P,I4P)+int(BYI4P,I4P)))
+              call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+              ! Unpack data [1xI4P,NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)xR8P]
+              N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+              s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+              XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+              var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2) = reshape(XYZp, (/NCOMP,nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+              if(allocated(XYZp)) deallocate(XYZp)
+            endif
 
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='FLOAT64') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+              endif
           endif
-      endif
 
-    endselect
-  endif
+        endselect
+      endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -10790,9 +11342,10 @@ end function
   character(len=:), allocatable       :: fmt
   character(len=:), allocatable       :: type
   character(len=:), allocatable       :: data
-  integer(I4P)                        :: np, offs
-  integer(I4P)                        :: N_Byte
+  integer(I4P)                        :: np, offs, N_Byte, s
   integer(I4P)                        :: nx1,nx2,ny1,ny2,nz1,nz2
+  integer(I1P), allocatable           :: dI1P(:)
+  real(R4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10803,47 +11356,64 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-  if(NCOMP/=3) E_IO=-1_I4P
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+      if(NCOMP/=3) E_IO=-1_I4P
 
-  if(E_IO == 0) then
-    allocate(var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+      if(E_IO == 0) then
+        allocate(var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
 
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) var
-        endif
-
-      case(binary)
-! Not implemented
-
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) var
+            endif
+    
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+              E_IO = -1_I4P
+            else
+              ! Decode base64 packed data
+              data=trim(adjustlt(data))
+              allocate(dI1P(NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYR4P,I4P)+int(BYI4P,I4P)))
+              call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+              ! Unpack data [1xI4P,NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)xR4P]
+              N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+              s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+              XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+              var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2) = reshape(XYZp, (/NCOMP,nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+              if(allocated(XYZp)) deallocate(XYZp)
+            endif
+    
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+              endif
           endif
+    
+        endselect
       endif
-
-    endselect
-  endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
 
   function VTK_VAR_XML_LIST_3DA_I8_READ(var_location,varname,NC_NN,NCOMP,var,npiece,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
-  !< Function for reading field of scalar variable (I4P, 1D array).
+  !< Function for reading field of scalar variable (I8P, 1D array).
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
   character(*),              intent(IN)  :: var_location !< location of variables: CELL for cell-centered, NODE for node-centered
@@ -10858,9 +11428,10 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte, s
   integer(I4P)                           :: nx1,nx2,ny1,ny2,nz1,nz2
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I8P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10871,40 +11442,57 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-  if(NCOMP/=3) E_IO=-1_I4P
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+      if(NCOMP/=3) E_IO=-1_I4P
 
-  if(E_IO == 0) then
-    allocate(var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+      if(E_IO == 0) then
+        allocate(var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
 
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='INT64') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) var
-        endif
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT64') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) var
+            endif
 
-      case(binary)
-! Not implemented
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT64') then
+              E_IO = -1_I4P
+            else
+              ! Decode base64 packed data
+              data=trim(adjustlt(data))
+              allocate(dI1P(NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYI8P,I4P)+int(BYI4P,I4P)))
+              call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+              ! Unpack data [1xI4P,NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)xI8P]
+              N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+              s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+              XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+              var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2) = reshape(XYZp, (/NCOMP,nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+              if(allocated(XYZp)) deallocate(XYZp)
+            endif
 
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='INT64') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='INT64') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+              endif
           endif
-      endif
 
-    endselect
-  endif
+        endselect
+      endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -10926,9 +11514,10 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte, s
   integer(I4P)                           :: nx1,nx2,ny1,ny2,nz1,nz2
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I4P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -10939,40 +11528,57 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
   ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-  if(NCOMP/=3) E_IO=-1_I4P
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+      if(NCOMP/=3) E_IO=-1_I4P
 
-  if(E_IO == 0) then
-    allocate(var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+      if(E_IO == 0) then
+        allocate(var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
 
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='INT32') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) var
-        endif
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT32') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) var
+            endif
 
-      case(binary)
-! Not implemented
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT32') then
+              E_IO = -1_I4P
+            else
+              ! Decode base64 packed data
+              data=trim(adjustlt(data))
+              allocate(dI1P(NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYI4P,I4P)+int(BYI4P,I4P)))
+              call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+              ! Unpack data [1xI4P,NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)xI4P]
+              N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+              s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+              XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+              var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2) = reshape(XYZp, (/NCOMP,nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+              if(allocated(XYZp)) deallocate(XYZp)
+            endif
 
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='INT32') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='INT32') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+              endif
           endif
-      endif
 
-    endselect
-  endif
+        endselect
+      endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -10994,9 +11600,10 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte, s
   integer(I4P)                           :: nx1,nx2,ny1,ny2,nz1,nz2
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I2P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -11007,40 +11614,57 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-  if(NCOMP/=3) E_IO=-1_I4P
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+      if(NCOMP/=3) E_IO=-1_I4P
 
-  if(E_IO == 0) then
-    allocate(var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+      if(E_IO == 0) then
+        allocate(var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
 
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='INT16') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) var
-        endif
-
-      case(binary)
-! Not implemented
-
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='INT16') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT16') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) var
+            endif
+    
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT16') then
+              E_IO = -1_I4P
+            else
+              ! Decode base64 packed data
+              data=trim(adjustlt(data))
+              allocate(dI1P(NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYI2P,I4P)+int(BYI4P,I4P)))
+              call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+              ! Unpack data [1xI4P,NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)xI2P]
+              N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+              s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+              XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+              var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2) = reshape(XYZp, (/NCOMP,nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+              if(allocated(XYZp)) deallocate(XYZp)
+            endif
+    
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='INT16') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+              endif
           endif
-      endif
 
-    endselect
-  endif
+        endselect
+      endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -11062,9 +11686,10 @@ end function
   character(len=:), allocatable          :: fmt
   character(len=:), allocatable          :: type
   character(len=:), allocatable          :: data
-  integer(I4P)                           :: np, offs
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                           :: np, offs, N_Byte, s
   integer(I4P)                           :: nx1,nx2,ny1,ny2,nz1,nz2
+  integer(I1P), allocatable              :: dI1P(:)
+  integer(I1P), allocatable              :: XYZp(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -11075,40 +11700,57 @@ end function
   endif
   np = 1_I4P; if (present(npiece)) np = npiece
 
-  ! Read field headers
-  E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
-              nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
-              fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
-  if(NCOMP/=3) E_IO=-1_I4P
+  select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      ! Read field headers
+      E_IO = VTK_VAR_XML_HEADER_READ(var_location,varname,NC_NN,NCOMP,&
+                  nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2, &
+                  fmt=fmt,type=type,data=data,offs=offs,npiece=np,cf=rf)
+      if(NCOMP/=3) E_IO=-1_I4P
 
-  if(E_IO == 0) then
-    allocate(var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
+      if(E_IO == 0) then
+        allocate(var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2), stat=E_IO)
 
-    ! Read field data
-    select case(vtk(rf)%f)
-      case(ascii)
-        if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
-            trim(adjustlt(Upper_Case(type)))/='INT8') then
-          E_IO = -1_I4P
-        else
-          read(data, fmt=*, iostat=E_IO) var
-        endif
+        ! Read field data
+        select case(vtk(rf)%f)
+          case(ascii)
+            if (trim(adjustlt(Upper_Case(fmt)))/='ASCII' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT8') then
+              E_IO = -1_I4P
+            else
+              read(data, fmt=*, iostat=E_IO) var
+            endif
 
-      case(binary)
-! Not implemented
+          case(binary)
+            if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+                trim(adjustlt(Upper_Case(type)))/='INT8') then
+              E_IO = -1_I4P
+            else
+              ! Decode base64 packed data
+              data=trim(adjustlt(data))
+              allocate(dI1P(NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)*int(BYI1P,I4P)+int(BYI4P,I4P)))
+              call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+              ! Unpack data [1xI4P,NCOMP*(nx2-nx1+1)*(ny2-ny1+1)*(nz2-nz1+1)xI1P]
+              N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+              s = size(transfer(dI1P(int(BYI4P,I4P)+1:),XYZp)); allocate(XYZp(1:s))
+              XYZp = transfer(dI1P(int(BYI4P,I4P)+1:),XYZp); if(allocated(dI1P)) deallocate(dI1P)
+              var(1:NCOMP,nx1:nx2,ny1:ny2,nz1:nz2) = reshape(XYZp, (/NCOMP,nx2-nx1+1,ny2-ny1+1,nz2-nz1+1/))
+              if(allocated(XYZp)) deallocate(XYZp)
+            endif
 
-      case(raw)
-        if(E_IO == 0) then
-          if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
-              trim(adjustlt(Upper_Case(type)))/='INT8') then
-            E_IO = -1_I4P
-          else
-            read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+          case(raw)
+            if(E_IO == 0) then
+              if (trim(adjustlt(Upper_Case(fmt)))/='APPENDED' .or. &
+                  trim(adjustlt(Upper_Case(type)))/='INT8') then
+                E_IO = -1_I4P
+              else
+                read(unit=vtk(rf)%u, iostat=E_IO, pos=vtk(rf)%ioffset+offs) N_Byte, var
+              endif
           endif
-      endif
 
-    endselect
-  endif
+        endselect
+      endif
+  endselect
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -11129,7 +11771,8 @@ end function
   integer(I4P)                        :: offs     !< Data offset.
   integer(I4P)                        :: nt       !< Number of tuples.
   integer(I4P)                        :: rf       !< Real file index.
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                        :: N_Byte
+  integer(I1P), allocatable           :: dI1P(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -11156,7 +11799,27 @@ end function
       if(allocated(data)) deallocate(data)
     endif
   case(binary)
-!Not implemented
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer,content=data)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+          trim(adjustlt(Upper_Case(type)))/='FLOAT64' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+        ! Decode packed base64 data
+        data=trim(adjustlt(data))
+        allocate(dI1P(int(BYR8P,I4P)+int(BYI4P,I4P)))
+        call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+        ! Unpack data [1xI4P,1xR8P]
+        N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+        fld = transfer(dI1P(int(BYI4P,I4P)+1:),fld); if(allocated(dI1P)) deallocate(dI1P)
+      endif
+      if(allocated(data)) deallocate(data)
+    endif
 
   case(raw)
     rewind(unit=vtk(rf)%u, iostat=E_IO)
@@ -11197,7 +11860,8 @@ end function
   integer(I4P)                        :: offs     !< Data offset.
   integer(I4P)                        :: nt       !< Number of tuples.
   integer(I4P)                        :: rf       !< Real file index.
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                        :: N_Byte
+  integer(I1P), allocatable           :: dI1P(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -11225,7 +11889,28 @@ end function
     endif
 
   case(binary)
-!Not implemented
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer,content=data)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+          trim(adjustlt(Upper_Case(type)))/='FLOAT32' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+        ! Decode packed base64 data
+        data=trim(adjustlt(data))
+        allocate(dI1P(int(BYR4P,I4P)+int(BYI4P,I4P)))
+        call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+        ! Unpack data [1xI4P,1xR4P]
+        N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+        fld = transfer(dI1P(int(BYI4P,I4P)+1:),fld); if(allocated(dI1P)) deallocate(dI1P)
+      endif
+      if(allocated(data)) deallocate(data)
+    endif
+
 
   case(raw)
     rewind(unit=vtk(rf)%u, iostat=E_IO)
@@ -11267,7 +11952,8 @@ end function
   integer(I4P)                        :: offs     !< Data offset.
   integer(I4P)                        :: nt       !< Number of tuples.
   integer(I4P)                        :: rf       !< Real file index.
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                        :: N_Byte
+  integer(I1P), allocatable           :: dI1P(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -11295,7 +11981,28 @@ end function
     endif
 
   case(binary)
-!Not implemented
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer,content=data)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT64' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+        ! Decode packed base64 data
+        data=trim(adjustlt(data))
+        allocate(dI1P(int(BYI8P,I4P)+int(BYI4P,I4P)))
+        call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+        ! Unpack data [1xI4P,1xI8P]
+        N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+        fld = transfer(dI1P(int(BYI4P,I4P)+1:),fld); if(allocated(dI1P)) deallocate(dI1P)
+      endif
+      if(allocated(data)) deallocate(data)
+    endif
+
 
   case(raw)
     rewind(unit=vtk(rf)%u, iostat=E_IO)
@@ -11335,7 +12042,8 @@ end function
   integer(I4P)                        :: offs     !< Data offset.
   integer(I4P)                        :: nt       !< Number of tuples.
   integer(I4P)                        :: rf       !< Real file index.
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                        :: N_Byte
+  integer(I1P), allocatable           :: dI1P(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -11363,7 +12071,28 @@ end function
     endif
 
   case(binary)
-!Not implemented
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer,content=data)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT32' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+        ! Decode packed base64 data
+        data=trim(adjustlt(data))
+        allocate(dI1P(int(BYI4P,I4P)+int(BYI4P,I4P)))
+        call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+        ! Unpack data [1xI4P,1xI4P]
+        N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+        fld = transfer(dI1P(int(BYI4P,I4P)+1:),fld); if(allocated(dI1P)) deallocate(dI1P)
+      endif
+      if(allocated(data)) deallocate(data)
+    endif
+
 
   case(raw)
     rewind(unit=vtk(rf)%u, iostat=E_IO)
@@ -11405,7 +12134,8 @@ end function
   integer(I4P)                        :: offs     !< Data offset.
   integer(I4P)                        :: nt       !< Number of tuples.
   integer(I4P)                        :: rf       !< Real file index.
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                        :: N_Byte
+  integer(I1P), allocatable           :: dI1P(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -11433,7 +12163,27 @@ end function
     endif
 
   case(binary)
-!Not implemented
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer,content=data)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT16' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+        ! Decode packed base64 data
+        data=trim(adjustlt(data))
+        allocate(dI1P(int(BYI2P,I4P)+int(BYI4P,I4P)))
+        call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+        ! Unpack data [1xI4P,1xI2P]
+        N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+        fld = transfer(dI1P(int(BYI4P,I4P)+1:),fld); if(allocated(dI1P)) deallocate(dI1P)
+      endif
+      if(allocated(data)) deallocate(data)
+    endif
 
   case(raw)
     rewind(unit=vtk(rf)%u, iostat=E_IO)
@@ -11475,7 +12225,8 @@ end function
   integer(I4P)                        :: offs     !< Data offset.
   integer(I4P)                        :: nt       !< Number of tuples.
   integer(I4P)                        :: rf       !< Real file index.
-  integer(I4P)                           :: N_Byte
+  integer(I4P)                        :: N_Byte
+  integer(I1P), allocatable           :: dI1P(:)
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -11503,7 +12254,28 @@ end function
     endif
 
   case(binary)
-!Not implemented
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
+                  buffer=s_buffer,content=data)
+    if(E_IO==0) then
+      call get_int(buffer=s_buffer, attrib='NumberOfTuples', val=nt, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+      call get_char(buffer=s_buffer, attrib='format', val=fmt, E_IO=E_IO)
+      if (trim(adjustlt(Upper_Case(fmt)))/='BINARY' .or. &
+          trim(adjustlt(Upper_Case(type)))/='INT8' .or. nt/=1) then        
+          E_IO = -1_I4P
+      else
+        ! Decode packed base64 data
+        data=trim(adjustlt(data))
+        allocate(dI1P(int(BYI1P,I4P)+int(BYI4P,I4P)))
+        call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
+        ! Unpack data [1xI4P,1xI1P]
+        N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte)
+        fld = transfer(dI1P(int(BYI4P,I4P)+1:),fld); if(allocated(dI1P)) deallocate(dI1P)
+      endif
+      if(allocated(data)) deallocate(data)
+    endif
+
 
   case(raw)
     rewind(unit=vtk(rf)%u, iostat=E_IO)
@@ -11526,7 +12298,6 @@ end function
   return
   !---------------------------------------------------------------------------------------------------------------------------------
   end function VTK_FLD_XML_I1_READ
-
 
 
   function VTK_END_XML_READ(cf) result(E_IO)
