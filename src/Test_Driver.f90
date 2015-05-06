@@ -17,6 +17,9 @@ public:: test_strg
 public:: test_punst
 public:: test_pstrg
 public:: test_vtm
+public:: test_rect_read
+public:: test_unst_read
+public:: test_strg_read
 #ifdef OPENMP
 public:: test_openmp
 #endif
@@ -460,6 +463,131 @@ contains
   return
   !---------------------------------------------------------------------------------------------------------------------------------
   endsubroutine test_rect
+
+  subroutine test_rect_read()
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Procedure for testing RectilinearGrid read functions.
+  !<
+  !< @note This subroutine also shows the usage of FieldData functions that are useful for loading global auxiliary data, e.g. time,
+  !< time step, ecc.
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  real(R8P), allocatable    :: x(:),y(:),z(:)
+  integer(I4P), allocatable :: v(:)
+  integer(I4P)              :: nx1,nx2,ny1,ny2,nz1,nz2
+  integer(I4P)              :: nel, nc, E_IO
+  real(R8P)                 :: t
+  integer(I8P)              :: c
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  call test_rect()
+  write(stdout,'(A)')' Testing RectilinearGrid read functions. Input file is XML_RECT#.vtr'
+
+  ! ascii
+  E_IO = VTK_INI_XML_READ(input_format='ascii', filename='XML_RECT-ascii.vtr', mesh_topology='RectilinearGrid', &
+     nx1=nx1, nx2=nx2, ny1=ny1, ny2=ny2, nz1=nz1, nz2=nz2)
+  E_IO = VTK_FLD_XML_READ(fld=t,fname='TIME')
+  E_IO = VTK_FLD_XML_READ(fld=c,fname='CYCLE')
+  E_IO = VTK_GEO_XML_READ(nx1=nx1, nx2=nx2, ny1=ny1, ny2=ny2, nz1=nz1, nz2=nz2, X=x, Y=y, Z=z)
+  E_IO = VTK_VAR_XML_READ(var_location='cell', varname='cell_value', NC_NN=nel, NCOMP=nc, var=v)
+  E_IO = VTK_END_XML_READ()
+
+
+  ! raw
+  E_IO = VTK_INI_XML_READ(input_format='raw', filename='XML_RECT-raw.vtr', mesh_topology='RectilinearGrid', &
+     nx1=nx1, nx2=nx2, ny1=ny1, ny2=ny2, nz1=nz1, nz2=nz2)
+  E_IO = VTK_FLD_XML_READ(fld=t,fname='TIME')
+  E_IO = VTK_FLD_XML_READ(fld=c,fname='CYCLE')
+  E_IO = VTK_GEO_XML_READ(nx1=nx1, nx2=nx2, ny1=ny1, ny2=ny2, nz1=nz1, nz2=nz2, X=x, Y=y, Z=z)
+  E_IO = VTK_VAR_XML_READ(var_location='cell', varname='cell_value', NC_NN=nel, NCOMP=nc, var=v)
+  E_IO = VTK_END_XML_READ()
+
+  ! binary
+  E_IO = VTK_INI_XML_READ(input_format='binary', filename='XML_RECT-binary.vtr', mesh_topology='RectilinearGrid', &
+     nx1=nx1, nx2=nx2, ny1=ny1, ny2=ny2, nz1=nz1, nz2=nz2)
+  E_IO = VTK_FLD_XML_READ(fld=t,fname='TIME')
+  E_IO = VTK_FLD_XML_READ(fld=c,fname='CYCLE')
+  E_IO = VTK_GEO_XML_READ(nx1=nx1, nx2=nx2, ny1=ny1, ny2=ny2, nz1=nz1, nz2=nz2, X=x, Y=y, Z=z)
+  E_IO = VTK_VAR_XML_READ(var_location='cell', varname='cell_value', NC_NN=nel, NCOMP=nc, var=v)
+  E_IO = VTK_END_XML_READ()
+  return
+  !---------------------------------------------------------------------------------------------------------------------------------
+  endsubroutine test_rect_read
+
+  subroutine test_strg_read()
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Procedure for testing RectilinearGrid read functions.
+  !<
+  !< @note This subroutine also shows the usage of FieldData functions that are useful for loading global auxiliary data, e.g. time,
+  !< time step, ecc.
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  real(R8P), allocatable    :: x(:),y(:),z(:)
+  integer(I4P), allocatable :: v(:)
+  integer(I4P)              :: nx1,nx2,ny1,ny2,nz1,nz2
+  integer(I4P)              :: ne,nn,nc, E_IO
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  call test_strg()
+  write(stdout,'(A)')' Testing StructuredGrid read functions. Input file is XML_RECT#.vtr'
+
+  ! binary
+  E_IO = VTK_INI_XML_READ(input_format='binary',filename='XML_STRG.vts',mesh_topology='StructuredGrid',&
+                     nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2)
+  E_IO = VTK_GEO_XML_READ(NN=nn,NC=ne,X=x,Y=y,Z=z)
+  E_IO = VTK_VAR_XML_READ(var_location='node', varname='scal_R8', NC_NN=nn, NCOMP=nc, var=v)
+  E_IO = VTK_END_XML_READ()
+
+  return
+  !---------------------------------------------------------------------------------------------------------------------------------
+  endsubroutine test_strg_read
+
+  subroutine test_unst_read()
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Procedure for testing UnstructuredGrid read functions.
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  real(R4P),allocatable, dimension(:)     :: x,y,z
+  integer(I1P), allocatable, dimension(:) :: cell_type
+  integer(I4P), allocatable, dimension(:) :: offset, connect
+  real(R8P),allocatable,     dimension(:) :: v
+  integer(I4P), allocatable, dimension(:) :: v_X,v_Y,v_Z
+  integer(I4P)                            :: Nn, ne, nc, E_IO
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  call test_unst()
+  write(stdout,'(A)')' Testing UnstructuredGrid read functions. Input file is XML_UNST#.vtu'
+
+  ! ascii
+  E_IO = VTK_INI_XML_READ(input_format='ascii', filename='XML_UNST-ascii.vtu', mesh_topology='UnstructuredGrid')
+  E_IO = VTK_GEO_XML_READ(NN=nn, NC=ne, X=x, Y=y, Z=z)
+  E_IO = VTK_CON_XML_READ(NC=ne, connect=connect, offset=offset, cell_type=cell_type)
+  E_IO = VTK_VAR_XML_READ(var_location='node', varname='scalars', NC_NN=nn, NCOMP=nc, var=v)
+  E_IO = VTK_VAR_XML_READ(var_location='node', varname='vector', NC_NN=nn, NCOMP=nc, varX=v_X,varY=v_Y,varZ=v_Z)
+  E_IO = VTK_END_XML_READ()
+
+  ! raw
+  E_IO = VTK_INI_XML_READ(input_format='raw', filename='XML_UNST-raw.vtu', mesh_topology='UnstructuredGrid')
+  E_IO = VTK_GEO_XML_READ(NN=Nn, NC=ne, X=x, Y=y, Z=z)
+  E_IO = VTK_CON_XML_READ(NC=ne, connect=connect, offset=offset, cell_type=cell_type)
+  E_IO = VTK_VAR_XML_READ(var_location='node', varname='scalars', NC_NN=nn, NCOMP=nc, var=v)
+  E_IO = VTK_VAR_XML_READ(var_location='node', varname='vector', NC_NN=nn, NCOMP=nc, varX=v_X,varY=v_Y,varZ=v_Z)
+  E_IO = VTK_END_XML_READ()
+
+  ! binary
+  E_IO = VTK_INI_XML_READ(input_format='binary', filename='XML_UNST-binary.vtu', mesh_topology='UnstructuredGrid')
+  E_IO = VTK_GEO_XML_READ(NN=Nn, NC=ne, X=x, Y=y, Z=z)
+  E_IO = VTK_CON_XML_READ(NC=ne, connect=connect, offset=offset, cell_type=cell_type)
+  E_IO = VTK_VAR_XML_READ(var_location='node', varname='scalars', NC_NN=nn, NCOMP=nc, var=v)
+  E_IO = VTK_VAR_XML_READ(var_location='node', varname='vector', NC_NN=nn, NCOMP=nc, varX=v_X,varY=v_Y,varZ=v_Z)
+  E_IO = VTK_END_XML_READ()
+
+  return
+  !---------------------------------------------------------------------------------------------------------------------------------
+  endsubroutine test_unst_read
 
   subroutine test_punst()
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1002,10 +1130,16 @@ call get_command_argument(1,cas)
 select case(trim(cas))
 case('-unst')
   call test_unst
+case('-unstr')
+  call test_unst_read
 case('-strg')
   call test_strg
+case('-strgr')
+  call test_strg_read
 case('-rect')
   call test_rect
+case('-rectr')
+  call test_rect_read
 case('-punst')
   call test_punst
 case('-pstrg')
@@ -1056,8 +1190,11 @@ contains
   write(stdout,'(A)')' Usage:'
   write(stdout,'(A)')'   Test_Driver [-switch]'
   write(stdout,'(A)')'     switch = unst   => testing UnstructuredGrid functions'
+  write(stdout,'(A)')'     switch = unstr  => testing UnstructuredGrid read functions'
   write(stdout,'(A)')'     switch = strg   => testing StructuredGrid functions'
+  write(stdout,'(A)')'     switch = strgr  => testing StructuredGrid read functions'
   write(stdout,'(A)')'     switch = rect   => testing RectilinearGrid functions'
+  write(stdout,'(A)')'     switch = rectr  => testing RectilinearGrid read functions'
   write(stdout,'(A)')'     switch = punst  => testing parallel (partitioned) PUnstructuredGrid functions'
   write(stdout,'(A)')'     switch = pstrg  => testing parallel (partitioned) StructuredGrid functions'
   write(stdout,'(A)')'     switch = vtm    => testing multi-block XML functions'

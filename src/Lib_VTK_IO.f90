@@ -6435,8 +6435,6 @@ contains
   ! PUBLIC FUNTIONS TO IMPORT VTK FILES
   !---------------------------------------------------------------------------------------------------------------------------------
 
-
-
   function VTK_INI_XML_READ(input_format,filename,mesh_topology,npieces,nx1,nx2,ny1,ny2,nz1,nz2,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   !< Procedure for initializing VTK-XML file when reading.
@@ -11798,6 +11796,7 @@ end function
       endif
       if(allocated(data)) deallocate(data)
     endif
+
   case(binary)
     rewind(unit=vtk(rf)%u, iostat=E_IO)
     E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
@@ -11911,7 +11910,6 @@ end function
       if(allocated(data)) deallocate(data)
     endif
 
-
   case(raw)
     rewind(unit=vtk(rf)%u, iostat=E_IO)
     E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
@@ -12003,7 +12001,6 @@ end function
       if(allocated(data)) deallocate(data)
     endif
 
-
   case(raw)
     rewind(unit=vtk(rf)%u, iostat=E_IO)
     E_IO = search(inside='FieldData', to_find='DataArray', with_attribute='Name', of_value=trim(fname), &
@@ -12092,7 +12089,6 @@ end function
       endif
       if(allocated(data)) deallocate(data)
     endif
-
 
   case(raw)
     rewind(unit=vtk(rf)%u, iostat=E_IO)
@@ -12275,7 +12271,6 @@ end function
       endif
       if(allocated(data)) deallocate(data)
     endif
-
 
   case(raw)
     rewind(unit=vtk(rf)%u, iostat=E_IO)
