@@ -20,6 +20,8 @@ public:: test_vtm
 public:: test_rect_read
 public:: test_unst_read
 public:: test_strg_read
+public:: test_punst_read
+public:: test_pstrg_read
 #ifdef OPENMP
 public:: test_openmp
 #endif
@@ -526,7 +528,7 @@ contains
   real(R8P), allocatable    :: x(:),y(:),z(:)
   integer(I4P), allocatable :: v(:)
   integer(I4P)              :: nx1,nx2,ny1,ny2,nz1,nz2
-  integer(I4P)              :: ne,nn,nc, E_IO
+  integer(I4P)              :: nn,nc, E_IO
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -536,10 +538,9 @@ contains
   ! binary
   E_IO = VTK_INI_XML_READ(input_format='binary',filename='XML_STRG.vts',mesh_topology='StructuredGrid',&
                      nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2)
-  E_IO = VTK_GEO_XML_READ(NN=nn,NC=ne,X=x,Y=y,Z=z)
+  E_IO = VTK_GEO_XML_READ(nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2,NN=nn,X=x,Y=y,Z=z)
   E_IO = VTK_VAR_XML_READ(var_location='node', varname='scal_R8', NC_NN=nn, NCOMP=nc, var=v)
   E_IO = VTK_END_XML_READ()
-
   return
   !---------------------------------------------------------------------------------------------------------------------------------
   endsubroutine test_strg_read
@@ -664,6 +665,55 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
   endsubroutine test_punst
 
+  subroutine test_punst_read()
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Procedure for testing parallel (partitioned) PStructuredGrid functions.
+  !<
+  !< @note Note that the two parts are completely independet.
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  real(R4P), allocatable, dimension(:)    :: x,y,z
+  integer(I1P), allocatable, dimension(:) :: cell_type
+  integer(I4P), allocatable, dimension(:) :: offset
+  integer(I4P), allocatable, dimension(:) :: connect
+  real(R8P), allocatable, dimension(:)    :: vf
+  integer(I4P), allocatable, dimension(:) :: vi
+  character(len=:), allocatable           :: filename, fname, ftype
+  integer(I4P)                            :: E_IO, pf, sf, nn, ne, np, nnf, ncf, npi, nfi, ncomp
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  call test_punst()
+
+  write(stdout,'(A)')' Testing parallel (partitioned) PUnstructuredGrid read functions'
+  write(stdout,'(A)')' Input files are XML_UNST.pvtu, XML_UNST_part0.vtu, XML_UNST_part1.vtu'
+
+  ! pvtu
+  E_IO = PVTK_INI_XML_READ(filename = 'XML_UNST.pvtu', mesh_topology = 'PUnstructuredGrid', &
+                           npieces=np, nnodefields=nnf, ncellfields=ncf, cf=pf)
+  do npi=1,np
+    E_IO = PVTK_GEO_XML_READ(npiece=npi, source=filename, cf=pf) ! Get the filename for the npi piece
+    E_IO = VTK_INI_XML_READ(input_format='raw', filename=trim(filename), mesh_topology='UnstructuredGrid', cf=sf)
+    E_IO = VTK_GEO_XML_READ(NN=nn, NC=ne, X=x, Y=y, Z=z, cf=sf)
+    E_IO = VTK_CON_XML_READ(NC=ne, connect=connect, offset=offset, cell_type=cell_type, cf=sf)
+
+    do nfi=1,nnf ! loop in pointdata fields
+      ! Get the name, type and number of component of the nnf field
+      E_IO = PVTK_VAR_XML_READ(var_location='node', nfield=nfi, name=fname, type=ftype, ncomp=ncomp, cf=pf)
+
+      if(trim(ftype)=='FLOAT64') E_IO = VTK_VAR_XML_READ(var_location='node', varname=trim(fname),&
+                                                         NC_NN=nn, NCOMP=ncomp, var=vf, cf=sf)
+      if(trim(ftype)=='INT32') E_IO = VTK_VAR_XML_READ(var_location='node', varname=trim(fname),  &
+                                                         NC_NN=nn, NCOMP=ncomp, var=vi, cf=sf)
+    enddo
+    E_IO = VTK_END_XML_READ(cf=sf)
+  enddo
+  E_IO = PVTK_END_XML_READ(cf=pf)
+  return
+  !---------------------------------------------------------------------------------------------------------------------------------
+  endsubroutine test_punst_read
+
+
   subroutine test_pstrg()
   !---------------------------------------------------------------------------------------------------------------------------------
   !< Procedure for testing parallel (partitioned) PStructuredGrid functions.
@@ -731,6 +781,61 @@ contains
   return
   !---------------------------------------------------------------------------------------------------------------------------------
   endsubroutine test_pstrg
+
+  subroutine test_pstrg_Read()
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Procedure for testing parallel (partitioned) PStructuredGrid read functions.
+  !<
+  !< The mesh is a simple prism partitioned into two pieces along x direction at ordinate i=nx2_p(1).
+  !<```
+  !< y ^
+  !<   |               ny2 +-----------------+--------------+
+  !<   |                   |                 |              |
+  !<   |                   |                 |              |
+  !<   |                   |                 |              |
+  !<   |                   |                 |              |
+  !<   o-------->      ny1 +-----------------+--------------+
+  !<            x         nx1               i=nx2_p(1)     nx2
+  !<```
+  !---------------------------------------------------------------------------------------------------------------------------------
+  implicit none
+  real(R8P), allocatable, dimension(:)        :: x,y,z
+  integer(I4P), allocatable, dimension(:,:,:) :: vi
+  character(len=:), allocatable               :: filename, fname, ftype
+  integer(I4P)                                :: E_IO, pf, sf, nn, np, nnf, ncf, npi, ncomp
+  integer(I4P)                                :: nx1,nx2,ny1,ny2,nz1,nz2
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  call test_pstrg()
+
+  write(stdout,'(A)')' Testing parallel (partitioned) PStructuredGrid read functions'
+  write(stdout,'(A)')' Input files are XML_STRG.pvts, XML_STRG_part0.vts, XML_STRG_part1.vts'
+
+  ! pvts
+  E_IO = PVTK_INI_XML_READ(filename = 'XML_STRG.pvts', mesh_topology = 'PStructuredGrid', &
+                           npieces=np, nnodefields=nnf, ncellfields=ncf,                  &
+                           nx1=nx1, nx2=nx2, ny1=ny1, ny2=ny2, nz1=nz1, nz2=nz2, cf=pf)
+  do npi=1,np
+    ! Get the filename and Extent for the npi piece
+    E_IO = PVTK_GEO_XML_READ(npiece=npi, source=filename, nx1=nx1, nx2=nx2, ny1=ny1, ny2=ny2, nz1=nz1, nz2=nz2, cf=pf)
+    E_IO = VTK_INI_XML_READ(input_format='raw', filename=trim(filename), mesh_topology='StructuredGrid', &
+                            nx1=nx1, nx2=nx2, ny1=ny1, ny2=ny2, nz1=nz1, nz2=nz2, cf=sf)
+    E_IO = VTK_GEO_XML_READ(nx1=nx1, nx2=nx2, ny1=ny1, ny2=ny2, nz1=nz1, nz2=nz2, NN=nn, X=x, Y=y, Z=z, cf=sf)
+
+    ! Get the name, type and number of component of the first field
+    E_IO = PVTK_VAR_XML_READ(var_location='node',  name=fname, type=ftype, ncomp=ncomp, cf=pf)
+    E_IO = VTK_VAR_XML_READ(var_location='node', varname=trim(fname), NC_NN=nn, NCOMP=ncomp, var=vi, cf=sf)
+    E_IO = VTK_END_XML_READ(cf=sf)
+  enddo
+
+  E_IO = PVTK_END_XML_READ(cf=pf)
+  return
+
+
+  return
+  !---------------------------------------------------------------------------------------------------------------------------------
+  endsubroutine test_pstrg_read
 
   subroutine test_vtm()
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1142,8 +1247,12 @@ case('-rectr')
   call test_rect_read
 case('-punst')
   call test_punst
+case('-punstr')
+  call test_punst_read
 case('-pstrg')
   call test_pstrg
+case('-pstrgr')
+  call test_pstrg_read
 case('-vtm')
   call test_vtm
 case('-openmp')
@@ -1196,7 +1305,9 @@ contains
   write(stdout,'(A)')'     switch = rect   => testing RectilinearGrid functions'
   write(stdout,'(A)')'     switch = rectr  => testing RectilinearGrid read functions'
   write(stdout,'(A)')'     switch = punst  => testing parallel (partitioned) PUnstructuredGrid functions'
+  write(stdout,'(A)')'     switch = punstr => testing parallel (partitioned) PUnstructuredGrid read functions'
   write(stdout,'(A)')'     switch = pstrg  => testing parallel (partitioned) StructuredGrid functions'
+  write(stdout,'(A)')'     switch = pstrgr => testing parallel (partitioned) StructuredGrid read functions'
   write(stdout,'(A)')'     switch = vtm    => testing multi-block XML functions'
   write(stdout,'(A)')'     switch = all    => testing all above functions'
   write(stdout,'(A)')'     switch = openmp => testing functions in parallel OpenMP framework'

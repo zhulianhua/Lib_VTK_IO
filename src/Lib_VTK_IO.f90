@@ -43,6 +43,11 @@ public:: PVTK_GEO_XML
 public:: PVTK_DAT_XML
 public:: PVTK_VAR_XML
 public:: PVTK_END_XML
+! functions for PVTK XML READ
+public:: PVTK_INI_XML_READ
+public:: PVTK_GEO_XML_READ
+public:: PVTK_VAR_XML_READ
+public:: PVTK_END_XML_READ
 ! functions for VTK LEGACY
 public:: VTK_INI
 public:: VTK_GEO
@@ -634,9 +639,11 @@ contains
 
   !---------------------------------------------------------------------------------------------------------------------------------
   res = string
-  do while ((res(1:1) == char(9) .or. res(1:1) == ' ') .and. len_trim(res)>0)
-    res = res(2:)
-  enddo
+  if(len_trim(res)>0) then
+    do while ((res(1:1) == char(9) .or. res(1:1) == ' ') .and. len_trim(res)>0)
+      res = res(2:)
+    enddo
+  endif
   !---------------------------------------------------------------------------------------------------------------------------------
   end function
 
@@ -748,7 +755,7 @@ contains
   end function
 
 
-  function move(inside, to_find, repeat, cf, buffer) result(E_IO)
+  function move(inside, to_find, repeat, upper, cf, buffer) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   !< move: advance in VTK file inside the mark 'inside', until find the mark 'to_find', 'repeat' times
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -756,9 +763,12 @@ contains
   character(len=*), optional,    intent(IN)  :: to_find    !< Searched XML element
   integer,          optional,    intent(IN)  :: repeat     !< Number of repetitions
   integer(I4P),     optional,    intent(IN)  :: cf         !< Current file index (for concurrent files IO).
+  logical,          optional,    intent(IN)  :: upper      !< True if return buffer in upper case
   character(len=:), allocatable, intent(OUT) :: buffer     !< String 
-  integer(I4P)                               :: E_IO 
+  character(len=:), allocatable              :: buff       !< Auxiliary buffer
   integer(I4P)                               :: rf         !< Real file index
+  logical                                    :: up         !< Readl upper case logical
+  integer(I4P)                               :: E_IO 
   integer(I4P)                               :: n
   !---------------------------------------------------------------------------------------------------------------------------------
 
@@ -768,8 +778,11 @@ contains
     rf = cf ; f = cf
   endif
 
+  up = .true.
+  if(present(upper)) up = upper
   do !search the beginnig of the mark 'inside' 
     E_IO = read_record(buffer, cf=rf); if(E_IO /= 0) exit
+    if(.not. up) buff = buffer
     buffer = trim(adjustlt(Upper_Case(buffer)))
     if (index(buffer, '<'//trim(adjustlt(Upper_Case(inside)))) > 0) exit !Mark 'inside' founded once
   enddo
@@ -778,11 +791,13 @@ contains
     n = 1; if(present(repeat)) n = repeat
     do !search 'repeat' times the mark 'to_find'
       E_IO = read_record(buffer, cf=rf); if(E_IO /= 0) exit
+      if(.not. up) buff = buffer
       buffer = trim(adjustlt(Upper_Case(buffer)))
       if (index(buffer, '</'//trim(adjustlt(Upper_Case(inside)))) > 0) exit
       if (index(buffer, '<'//trim(adjustlt(Upper_Case(to_find)))) > 0) n = n - 1 !Mark 'to_find' founded once 
       if (n == 0) exit !Mark 'to_find' founded 'repeat' times
     enddo
+    if(.not. up) buffer = buff
     if (n > 0 ) E_IO = -1_I4P
   endif
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -6477,7 +6492,9 @@ contains
   character(len=:),allocatable        :: aux
   integer(I4P), dimension(6)          :: rn             !< Real node ranges in WholeExtent [nx1,nx2,ny1,ny2,nz1,nz2]
   logical                             :: fexist
+  !---------------------------------------------------------------------------------------------------------------------------------
 
+  !---------------------------------------------------------------------------------------------------------------------------------
   E_IO = -1_I4P
   if (.not.ir_initialized) call IR_Init
   if (.not.b64_initialized) call b64_init
@@ -6566,6 +6583,7 @@ contains
         open(unit=Get_Unit(vtk(rf)%u),file=trim(filename),status='old', &
              form='UNFORMATTED',access='STREAM',action='READ', &
              iostat=E_IO, position='REWIND')
+
         E_IO = move(inside='VTKFile', cf=rf, buffer=s_buffer)
         call get_char(buffer=s_buffer, attrib='byte_order', val=aux, E_IO=E_IO)
 
@@ -6883,7 +6901,7 @@ contains
             trim(adjustlt(Upper_Case(type)))/='FLOAT32') then
           E_IO = -1_I4P 
         else
-
+          allocate(XYZ(3,NN), stat=E_IO)
           read(data, fmt=*, iostat=E_IO) ((XYZ(i,j),i=1,3),j=1,NN) !get ascii array
         endif
         if(allocated(data)) deallocate(data)
@@ -8865,7 +8883,7 @@ end function
         else
           ! Decode packed base64 data
           data=trim(adjustlt(data))
-          allocate(dI1P(NC_NN*NCOMP**int(BYR4P,I4P)+int(BYI4P,I4P)))
+          allocate(dI1P(NC_NN*NCOMP*int(BYR4P,I4P)+int(BYI4P,I4P)))
           call b64_decode(code=data,n=dI1P); if(allocated(data)) deallocate(data)
           ! Unpack data [1xI4P,NN_NC*NCOMPxR8P]
           N_byte =  transfer(dI1P(1:int(BYI4P,I4P)),N_byte); s = size(transfer(dI1P(int(BYI4P,I4P)+1:),var))
@@ -12317,7 +12335,237 @@ end function
   !---------------------------------------------------------------------------------------------------------------------------------
   end function VTK_END_XML_READ
 
+  function PVTK_INI_XML_READ(filename,mesh_topology,npieces,nnodefields,ncellfields, nx1,nx2,ny1,ny2,nz1,nz2,cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Procedure for initializing PVTK-XML file when reading.
+  !<
+  !< Supported topologies are:
+  !<- PRectilinearGrid;
+  !<- PStructuredGrid; 
+  !<- PUnstructuredGrid. 
+  !<### Example of usage
+  !<```fortran
+  !< integer(I4P):: nx1,nx2,ny1,ny2,nz1,nz2
+  !< ...
+  !< E_IO = PVTK_INI_XML_READ('XML_PVTK.pvtr','RectilinearGrid',nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2,cf=rf)
+  !< ...
+  !<```
+  !< Note that the file extension is necessary in the file name. The XML standard has different extensions for each
+  !< different topologies (e.g. *vtr* for rectilinear topology). See the VTK-standard file for more information.
+  !---------------------------------------------------------------------------------------------------------------------------------
+  character(*), intent(IN)            :: filename       !< file name
+  character(*), intent(IN)            :: mesh_topology  !< mesh topology
+  integer(I4P), intent(OUT), optional :: npieces        !< Number of pieces stored in the file
+  integer(I4P), intent(OUT), optional :: nnodefields    !< Number of pieces stored in the file
+  integer(I4P), intent(OUT), optional :: ncellfields    !< Number of pieces stored in the file
+  integer(I4P), intent(OUT), optional :: nx1            !< Initial node of x axis.
+  integer(I4P), intent(OUT), optional :: nx2            !< Final node of x axis.
+  integer(I4P), intent(OUT), optional :: ny1            !< Initial node of y axis.
+  integer(I4P), intent(OUT), optional :: ny2            !< Final node of y axis.
+  integer(I4P), intent(OUT), optional :: nz1            !< Initial node of z axis.
+  integer(I4P), intent(OUT), optional :: nz2            !< Final node of z axis.
+  integer(I4P), intent(OUT), optional :: cf             !< Current file index (for concurrent files IO).
+  integer(I4P)                        :: rf             !< Real file index.
+  character(len=:),allocatable        :: s_buffer       !< Buffer string.
+  integer(I4P)                        :: E_IO           !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
+  character(len=:),allocatable        :: aux
+  integer(I4P), dimension(6)          :: rn             !< Real node ranges in WholeExtent [nx1,nx2,ny1,ny2,nz1,nz2]
+  logical                             :: fexist
+  !---------------------------------------------------------------------------------------------------------------------------------
 
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  if (.not.ir_initialized) call IR_Init
+  if (.not.b64_initialized) call b64_init
+  call vtk_update(act='add',cf=rf,Nvtk=Nvtk,vtk=vtk)
+  f = rf
+  if (present(cf)) cf = rf
+  vtk(rf)%topology = trim(mesh_topology)
+
+  inquire( file=trim(filename), exist=fexist ); if(.not. fexist) return
+
+  vtk(rf)%f = ascii
+
+  open(unit=Get_Unit(vtk(rf)%u),file=trim(filename),status='old', &
+       form='UNFORMATTED',access='STREAM',action='READ', &
+       iostat=E_IO, position='REWIND')
+
+  select case(trim(vtk(rf)%topology))
+    case('PRectilinearGrid', 'PStructuredGrid')
+      ! Get WholeExtent
+      E_IO = move(inside='VTKFile', to_find=trim(vtk(rf)%topology), cf=rf,buffer=s_buffer)
+      call get_char(buffer=s_buffer, attrib='WholeExtent', val=aux, E_IO=E_IO)
+      if(E_IO == 0) then
+        read(aux,*) rn
+        if(present(nx1)) nx1 = rn(1); if(present(nx2)) nx2 = rn(2)
+        if(present(ny1)) ny1 = rn(3); if(present(ny2)) ny2 = rn(4)
+        if(present(nz1)) nz1 = rn(5); if(present(nz2)) nz2 = rn(6)
+      endif
+  end select
+
+  ! count the pieces
+  if(present(npieces)) then
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    npieces = 0
+    do
+      E_IO = read_record(s_buffer, cf=rf); if(E_IO /= 0) exit
+      s_buffer = trim(adjustl(Upper_Case(s_buffer)))
+      if (index(s_buffer, '</'//trim(Upper_Case(vtk(rf)%topology))) > 0) exit !end of ASCII header section found
+      if (index(s_buffer, '<PIECE') > 0) npieces = npieces + 1
+    enddo
+  endif
+
+  ! count the node fields
+  if(present(nnodefields)) then
+    nnodefields = 0
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    if(move(inside=trim(vtk(rf)%topology), to_find='PPointData', cf=rf,buffer=s_buffer) == 0) then
+      do
+        if(read_record(s_buffer, cf=rf) /= 0 ) exit
+        s_buffer = trim(adjustl(Upper_Case(s_buffer)))
+        if (index(s_buffer, '</PPOINTDATA') > 0) exit !end of PCellData section found
+        if (index(s_buffer, '<PDATAARRAY') > 0) nnodefields = nnodefields + 1
+      enddo
+    endif
+  endif
+
+  ! count the cell fields
+  if(present(ncellfields)) then
+    ncellfields = 0
+    rewind(unit=vtk(rf)%u, iostat=E_IO)
+    if(move(inside=trim(vtk(rf)%topology), to_find='PCellData', cf=rf,buffer=s_buffer) == 0) then
+      do
+        if(read_record(s_buffer, cf=rf) /= 0 ) exit
+        s_buffer = trim(adjustl(Upper_Case(s_buffer)))
+        if (index(s_buffer, '</PCELLDATA') > 0) exit !end of PCellData section found
+        if (index(s_buffer, '<PDATAARRAY') > 0) ncellfields = ncellfields + 1
+      enddo
+    endif
+  endif
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function PVTK_INI_XML_READ
+
+
+  function PVTK_GEO_XML_READ(npiece,cf,source,nx1,nx2,ny1,ny2,nz1,nz2) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for close an opened VTK file.
+  !---------------------------------------------------------------------------------------------------------------------------------
+  integer(I4P), intent(IN),  optional    :: npiece         !< Number of pieces stored in the file
+  integer(I4P), intent(IN),  optional    :: cf             !< Current file index (for concurrent files IO).
+  character(:), intent(OUT), allocatable :: source         !< Source file name
+  integer(I4P), intent(OUT), optional    :: nx1            !< Initial node of x axis.
+  integer(I4P), intent(OUT), optional    :: nx2            !< Final node of x axis.
+  integer(I4P), intent(OUT), optional    :: ny1            !< Initial node of y axis.
+  integer(I4P), intent(OUT), optional    :: ny2            !< Final node of y axis.
+  integer(I4P), intent(OUT), optional    :: nz1            !< Initial node of z axis.
+  integer(I4P), intent(OUT), optional    :: nz2            !< Final node of z axis.
+  integer(I4P)                           :: rf             !< Real file index.
+  integer(I4P)                           :: np             !> Real piece number
+  character(len=:),allocatable           :: s_buffer       !< Buffer string.
+  integer(I4P)                           :: E_IO           !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
+  integer(I4P), dimension(6)             :: rn             !< Real node ranges in Extent [nx1,nx2,ny1,ny2,nz1,nz2]
+  character(len=:),allocatable           :: aux
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+  np = 1_I4P; if (present(npiece)) np = npiece
+  select case(trim(vtk(rf)%topology))
+    case('PRectilinearGrid', 'PStructuredGrid', 'PUnstructuredGrid')
+      ! Get Extent
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside=trim(vtk(rf)%topology), to_find='Piece', repeat=np, upper=.false., cf=rf, buffer=s_buffer) ! find the 'np' piece
+      call get_char(buffer=s_buffer, attrib='Source', val=source, case='lower', E_IO=E_IO)
+      select case(trim(vtk(rf)%topology))
+        case('PRectilinearGrid', 'PStructuredGrid')
+          call get_char(buffer=s_buffer, attrib='Extent', val=aux, case='lower', E_IO=E_IO)
+          if(E_IO == 0) then
+            read(aux,*) rn
+            if(present(nx1)) nx1 = rn(1); if(present(nx2)) nx2 = rn(2)
+            if(present(ny1)) ny1 = rn(3); if(present(ny2)) ny2 = rn(4)
+            if(present(nz1)) nz1 = rn(5); if(present(nz2)) nz2 = rn(6)
+          endif
+      end select
+  end select
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function PVTK_GEO_XML_READ
+
+
+  function PVTK_VAR_XML_READ(var_location, nfield, cf, name, type, NCOMP) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for close an opened VTK file.
+  !---------------------------------------------------------------------------------------------------------------------------------
+  character(*), intent(IN)                         :: var_location   !< Location of saving variables: CELL or NODE centered.
+  integer(I4P), intent(IN),               optional :: nfield         !< Number of pieces stored in the file
+  integer(I4P), intent(IN),               optional :: cf             !< Current file index (for concurrent files IO).
+  character(:), intent(OUT), allocatable, optional :: name           !< Field name
+  character(:), intent(OUT), allocatable, optional :: type           !< Field data type
+  integer(I4P), intent(OUT),              optional :: NCOMP          !< Field number of components
+  integer(I4P)                                     :: rf             !< Real file index.
+  integer(I4P)                                     :: nf             !< Real number of field
+  character(len=:),allocatable                     :: s_buffer       !< Buffer string.
+  integer(I4P)                                     :: E_IO           !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
+
+  nf = 1; if(present(nfield)) nf = nfield
+
+  select case(trim(Upper_Case(var_location)))
+    case('NODE')
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='PPointData', to_find='PDataArray', repeat=nf, cf=rf,buffer=s_buffer)
+      if(E_IO == 0) then
+        if(present(NCOMP)) NCOMP = 1
+        if(present(NCOMP)) call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+        if(present(type)) call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+        if(present(name)) call get_char(buffer=s_buffer, attrib='Name', val=name, E_IO=E_IO)
+      endif
+
+    case('CELL')
+      rewind(unit=vtk(rf)%u, iostat=E_IO)
+      E_IO = move(inside='PPointData', to_find='PDataArray', repeat=nf, cf=rf,buffer=s_buffer)
+      if(E_IO == 0) then
+        if(present(NCOMP)) NCOMP = 1
+        if(present(NCOMP)) call get_int(buffer=s_buffer, attrib='NumberOfComponents', val=NCOMP, E_IO=E_IO)
+        if(present(type)) call get_char(buffer=s_buffer, attrib='type', val=type, E_IO=E_IO)
+        if(present(name)) call get_char(buffer=s_buffer, attrib='Name', val=name, E_IO=E_IO)
+      endif
+
+  end select
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function PVTK_VAR_XML_READ
+
+  function PVTK_END_XML_READ(cf) result(E_IO)
+  !---------------------------------------------------------------------------------------------------------------------------------
+  !< Function for close an opened VTK file.
+  !---------------------------------------------------------------------------------------------------------------------------------
+  integer(I4P), optional :: cf
+  integer(I4P)           :: rf
+  integer(I4P)           :: E_IO 
+  logical                :: fopen
+  !---------------------------------------------------------------------------------------------------------------------------------
+
+  !---------------------------------------------------------------------------------------------------------------------------------
+  rf = f 
+  if (present(cf)) rf = cf
+  
+  select case(vtk(rf)%f)
+  case(ascii,binary,raw)
+    inquire(unit=vtk(rf)%u, opened=fopen,iostat=E_IO) 
+    if(fopen) close(unit=vtk(rf)%u, iostat=E_IO)
+  end select
+  !---------------------------------------------------------------------------------------------------------------------------------
+  end function PVTK_END_XML_READ
 
 
 
