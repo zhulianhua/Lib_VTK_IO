@@ -535,7 +535,8 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
   endfunction Get_Unit
 
-  elemental function Upper_Case(string)
+! XLF error : "The result of an elemental function must be a nonpointer, nonallocatable scalar, and its type parameters must be constant expressions."
+  function Upper_Case(string)
   !---------------------------------------------------------------------------------------------------------------------------------
   !< Function for converting lower case characters of a string to upper case ones.
   !<
@@ -594,7 +595,8 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
   endsubroutine byte_update
 
-  pure subroutine vtk_update(act,cf,Nvtk,vtk)
+! XLF error: 1516-106 (S) A pure subprogram must not contain references to procedures which are not pure.
+  subroutine vtk_update(act,cf,Nvtk,vtk)
   !---------------------------------------------------------------------------------------------------------------------------------
   !< Subroutine for updating (adding and removing elements into) vtk array.
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -603,11 +605,14 @@ contains
   integer(I4P),                     intent(INOUT):: cf         !< Current file index (for concurrent files IO).
   integer(I4P),                     intent(INOUT):: Nvtk       !< Number of (concurrent) VTK files.
   type(Type_VTK_File), allocatable, intent(INOUT):: vtk(:)     !< VTK files data.
-  type(Type_VTK_File), allocatable::                vtk_tmp(:) !< Temporary array of VTK files data.
+  type(Type_VTK_File), allocatable               :: vtk_tmp(:) !< Temporary array of VTK files data.
+  character(len=len(act))                        :: upper_act !< Converted string.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
-  select case(Upper_Case(trim(act)))
+! XLF error: 1511-051 (S) The type of the SELECT CASE expression is invalid.
+  upper_act = Upper_Case(trim(act))
+  select case(upper_act)
   case('ADD')
     if (Nvtk>0_I4P) then
       allocate(vtk_tmp(1:Nvtk))
