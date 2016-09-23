@@ -24,11 +24,13 @@ SET(TESTS_PATH ${CMAKE_SOURCE_DIR}/src/tests)
 # BUILD PATHS
 #################################################################
 
+SET(CMAKE_PATH ${CMAKE_SOURCE_DIR}/CMake)
 SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 SET(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modules)
+SET(MODULE_OUTPUT_PATH ${CMAKE_Fortran_MODULE_DIRECTORY})
 SET(THIRDPARTY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/thirdparty)
-INCLUDE_DIRECTORIES(${CMAKE_Fortran_MODULE_DIRECTORY})
+INCLUDE_DIRECTORIES(${MODULE_OUTPUT_PATH})
 
 #################################################################
 # CONFIGURATION TYPES & BUILD MODE & BUILD_TESTS
@@ -95,7 +97,6 @@ FOREACH(EXT_LIB ${EXT_LIBS})
         ENDIF()
     ENDIF()
 ENDFOREACH ()
-
 
 #################################################################
 # FFLAGS depend on the compiler and the build type
@@ -174,4 +175,11 @@ IF(${PROJECT_NAME}_ENABLE_TESTS)
     ADD_SUBDIRECTORY(${TESTS_PATH})
 ENDIF()
 
+#################################################################
+# CREATE CONFIG FILE
+#################################################################
+
+CONFIGURE_FILE(${CMAKE_PATH}/${PROJECT_NAME}Config.cmake.in 
+               ${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+               @ONLY)
 
