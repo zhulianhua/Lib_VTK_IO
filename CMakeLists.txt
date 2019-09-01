@@ -1,185 +1,329 @@
-#################################################################
-# HEADER
-#################################################################
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.7)
-PROJECT(VTKIO Fortran)
+# Adapted from Izaak Beekman by Lianhua Zhu, Sept. 2019
 
-SET(${PROJECT_NAME}_VERSION 0.0.1)
-SET(${PROJECT_NAME}_SOVERSION 1)
-SET(LIB ${PROJECT_NAME})
+# the original copyright statments
+# CMake Configuration and build added by Izaak Beekman -- May, 2014
 
-#SET(CMAKE_VERBOSE_MAKEFILE TRUE)
+#---------------------------------------------------------------------
+# Copy right (c) 2019, Lianhua Zhu
+# All rights reserved.
 
-#################################################################
+# This file is contributed to the LIB_VTK_IO project, and
+# is licensed under the terms of LIB_VTK_IO license. The LIB_VTK_IO
+# license is located in the LICENSE* files which must be distributed with
+# this software. The contributing author, Lianhua Zhu, retains all
+# rights permitted by the terms of the LIB_VTK_IO license.
+#---------------------------------------------------------------------
+
+cmake_minimum_required ( VERSION 2.8.8 FATAL_ERROR )
+
+# Use MSVS folders to organize projects on windows
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+set(PROJECT_DESCRIPTION "A Fortran VTK File IO API")
+set(PROJECT_URL "https://github.com/zhulianhua/Lib_VTK_IO")
+
+# Set the type/configuration of build to perform
+set ( CMAKE_CONFIGURATION_TYPES "Debug" "Release" "MinSizeRel" "RelWithDebInfo" )
+set ( CMAKE_BUILD_TYPE "Release"
+  CACHE STRING "Select which configuration to build." )
+
+enable_language ( Fortran )
+include ( "cmake/pickFortranCompilerFlags.cmake" )
+
+set_property ( CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS ${CMAKE_CONFIGURATION_TYPES} )
+
+# Check for in-source builds and error out if found
+# Provides an advanced option to allow in source builds
+include ( "cmake/checkOutOfSource.cmake" )
+
+#----------------------------------------------
 # DEFINE PATHS
-#################################################################
-
+#----------------------------------------------
 SET(LIB_PATH ${CMAKE_SOURCE_DIR}/src/lib)
 SET(TESTS_PATH ${CMAKE_SOURCE_DIR}/src/tests)
 
-#SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/Modules/")
+#---------------------
+# Declare project name
+#---------------------
+project ( lib_vtk_io NONE )
 
-
-#################################################################
-# BUILD PATHS
-#################################################################
-
-SET(CMAKE_PATH ${CMAKE_SOURCE_DIR}/CMake)
-SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
-SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
-SET(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modules)
-SET(MODULE_OUTPUT_PATH ${CMAKE_Fortran_MODULE_DIRECTORY})
-SET(THIRDPARTY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/thirdparty)
-INCLUDE_DIRECTORIES(${MODULE_OUTPUT_PATH})
-
-#################################################################
-# CONFIGURATION TYPES & BUILD MODE & BUILD_TESTS
-#################################################################
-
-SET(CMAKE_CONFIGURATION_TYPES DEBUG RELEASE)
-IF(NOT CMAKE_BUILD_TYPE)
-  SET(CMAKE_BUILD_TYPE DEBUG CACHE STRING
-      "Choose the type of build, options are: NONE DEBUG RELEASE"
-      FORCE)
-
-  SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS NONE DEBUG RELEASE)
-ENDIF(NOT CMAKE_BUILD_TYPE)
-
+#---------------------
+# Enable test
+#---------------------
 IF(NOT ${PROJECT_NAME}_ENABLE_TESTS)
-    OPTION(${PROJECT_NAME}_ENABLE_TESTS "Enable/disable tests" OFF)
+    option(${PROJECT_NAME}_ENABLE_TESTS "Enable/disable tests" OFF)
 ENDIF(NOT ${PROJECT_NAME}_ENABLE_TESTS)
 
-#################################################################
-# List of external libraries
-#################################################################
+#----------------------------------
+# Get version (semantic versioning)
+# C.F. semver.org
+#----------------------------------
+file ( STRINGS "${CMAKE_SOURCE_DIR}/.VERSION" VERSION )
+string( REPLACE "." ";" VERSION_LIST ${VERSION} )
+list(GET VERSION_LIST 0 VERSION_MAJOR)
+list(GET VERSION_LIST 1 VERSION_MINOR)
+list(GET VERSION_LIST 2 VERSION_PATCH)
+set(PROJECT_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
+message ( STATUS "CMake build configuration for lib_vtk_io ${PROJECT_VERSION}" )
 
-SET(EXT_LIBS  )
+#-------------------------------------
+# Collect source files for the library
+#-------------------------------------
+set ( VTK_LIB_SRCS src/lib/IR_Precision.f90
+                   src/lib/Lib_Base64.f90
+                   src/lib/Lib_Pack_Data.f90
+                   src/lib/Lib_VTK_IO.f90)
 
-#################################################################
-# Find packages
-#################################################################
+file ( GLOB VTK_TEST_SRCS "src/tests/*.f90" )
 
-FOREACH(EXT_LIB ${EXT_LIBS})
-    IF(DEFINED ${PROJECT_NAME}_ENABLE_${EXT_LIB} AND ${PROJECT_NAME}_ENABLE_${EXT_LIB} AND NOT ${EXT_LIB}_FOUND)
-        FIND_PACKAGE( ${EXT_LIB} )
-    
-        IF (${EXT_LIB}_FOUND)
-            ADD_DEFINITIONS(-DENABLE_${EXT_LIB})
-            IF(IS_DIRECTORY ${${EXT_LIB}_INCLUDE_DIR})
-               INCLUDE_DIRECTORIES(${${EXT_LIB}_INCLUDE_DIR})
-            ENDIF()
-            LINK_DIRECTORIES(${${EXT_LIB}_LIBRARIES})
-        ENDIF()
+#-----------------------------------------
+# Collect all the mod files into their own
+# directory to ease installation issues
+#-----------------------------------------
+set ( MODULE_DIR "${CMAKE_BINARY_DIR}/include" )
 
-    ELSEIF(DEFINED ${PROJECT_NAME}_ENABLE_${EXT_LIB} AND NOT ${PROJECT_NAME}_ENABLE_${EXT_LIB})
-        UNSET(${EXT_LIB}_INCLUDES CACHE)
-        UNSET(${EXT_LIB}_LIBS CACHE)
-        UNSET(${EXT_LIB}_INCLUDE_DIR CACHE)
-        UNSET(${EXT_LIB}_LIBRARIES CACHE)
+#-------------------------------------
+# Define where our files get installed
+#-------------------------------------
+set ( USE_GNU_INSTALL_CONVENTION FALSE
+  CACHE BOOL
+  "Install library, module file and documentation to standard GNU locations. Do not use this if supporting multiple Fortran compilers" )
 
-    ELSE(NOT DEFINED ${PROJECT_NAME}_ENABLE_${EXT_LIB})
-        FIND_PACKAGE( ${EXT_LIB} )
+# Set the package name to be specific to the compiler used, so that
+# versions compiled with different compilers can be installed in parallel
+string ( TOLOWER ${CMAKE_PROJECT_NAME}-${CMAKE_Fortran_COMPILER_ID} PACKAGE_NAME )
+set ( PACKAGE_VERSION "${PACKAGE_NAME}-${VERSION}" )
 
-        IF (${${EXT_LIB}_FOUND})
-           SET(NO_LIBS FALSE)
-           OPTION(${PROJECT_NAME}_ENABLE_${EXT_LIB} "Enable/disable ${EXT_LIB} library" ON)
-           ADD_DEFINITIONS(-DENABLE_${EXT_LIB})
-           IF(IS_DIRECTORY ${${EXT_LIB}_INCLUDE_DIR})
-               INCLUDE_DIRECTORIES(${${EXT_LIB}_INCLUDE_DIR})
-           ENDIF()
-            LINK_DIRECTORIES(${${EXT_LIB}_LIBRARIES})
-        ELSE()
-           OPTION(${PROJECT_NAME}_ENABLE_${EXT_LIB} "Enable/disable ${EXT_LIB} library" OFF)
-           UNSET(${EXT_LIB}_INCLUDES CACHE)
-           UNSET(${EXT_LIB}_LIBS CACHE)
-           UNSET(${EXT_LIB}_INCLUDE_DIR CACHE)
-           UNSET(${EXT_LIB}_LIBRARIES CACHE)
-        ENDIF()
-    ENDIF()
-ENDFOREACH ()
+if (USE_GNU_INSTALL_CONVENTION)
+  include(GNUInstallDirs)
+  set ( INSTALL_MOD_DIR "${CMAKE_INSTALL_INCLUDEDIR}" )
+  set ( INSTALL_LIB_DIR "${CMAKE_INSTALL_LIBDIR}")
+  set( ABS_LIB_INSTALL_DIR "\${CMAKE_INSTALL_FULL_LIBDIR}" )
+else ()
+  # Most of this could be 'wrong' for Windows/Cygwin
+  set ( INSTALL_MOD_DIR    "${PACKAGE_VERSION}/lib" )
+  set ( INSTALL_LIB_DIR    "${INSTALL_MOD_DIR}" )
+  set( ABS_LIB_INSTALL_DIR "\${CMAKE_INSTALL_PREFIX}/${INSTALL_LIB_DIR}" )
+endif ()
 
-#################################################################
-# FFLAGS depend on the compiler and the build type
-#################################################################
 
-GET_FILENAME_COMPONENT(Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
+# Put package export CMake files where they can be found
+# use `find_package ( lib_vtk_io-${CMAKE_Fortran_COMPILER_ID} <version> REQUIRED )`
+if (USE_GNU_INSTALL_CONVENTION)
+  set ( EXPORT_INSTALL_DIR "${INSTALL_LIB_DIR}/cmake/${PACKAGE_VERSION}" )
+else ()
+  set ( EXPORT_INSTALL_DIR "${PACKAGE_VERSION}/cmake" )
+endif ()
 
-IF(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
-#   SET(MACROS "${MACROS} -DDEBUG -Dmemcheck")
-    ADD_DEFINITIONS(-DDEBUG)
-    ADD_DEFINITIONS(-Dmemcheck)
-ENDIF()
+if ( "${CMAKE_SYSTEM_NAME}" MATCHES "Darwin" )
+  set ( ENABLE_DYLIBS_USE_RPATH TRUE CACHE BOOL
+    "Enable @rpath install name for dylibs" )
+  mark_as_advanced ( ENABLE_DYLIBS_USE_RPATH )
+endif ()
 
-ADD_DEFINITIONS(-D${CMAKE_Fortran_COMPILER_ID})
+if ( ENABLE_DYLIBS_USE_RPATH )
+  set ( CMAKE_MACOSX_RPATH TRUE )
+else ()
+  set ( CMAKE_INSTALL_NAME_DIR
+    "${ABS_LIB_INSTALL_DIR}" )
+endif ()
 
-message(STATUS "COMPILER INFO: ${CMAKE_Fortran_COMPILER_ID} - ${Fortran_COMPILER_NAME}")
+#---------------------------------------------
+# Build a shared and static library by default
+#---------------------------------------------
+set ( LIB_NAME ${CMAKE_PROJECT_NAME} )
+add_library ( ${LIB_NAME}        SHARED ${VTK_LIB_SRCS} )
+add_library ( ${LIB_NAME}-static STATIC ${VTK_LIB_SRCS} )
 
-IF (${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU" OR Fortran_COMPILER_NAME MATCHES "gfortran*")
-  # gfortran 
-  set(FORTRAN_FLAGS "-fdefault-real-8 -ffree-line-length-0 -cpp -Wimplicit-interface ${EXTRA_FLAGS} ")
-  set (CMAKE_Fortran_FLAGS "${FORTRAN_FLAGS} ${MACROS} ${INCLUDES} " CACHE STRING "" FORCE)
-  set (CMAKE_Fortran_FLAGS_RELEASE "-O3 ${EXTRA_FLAGS} " CACHE STRING "" FORCE)
-  set (CMAKE_Fortran_FLAGS_DEBUG   "-g -fbacktrace -fbounds-check -fprofile-arcs -ftest-coverage -Wimplicit-interface ${EXTRA_FLAGS} " CACHE STRING "" FORCE)
-ELSEIF (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel" OR Fortran_COMPILER_NAME MATCHES "ifort*")
-  # ifort (untested)
-  set(FORTRAN_FLAGS "-r8 -fpp -W1 ${EXTRA_FLAGS} ")
-  set (CMAKE_Fortran_FLAGS "${FORTRAN_FLAGS} ${MACROS} ${INCLUDES}" CACHE STRING "" FORCE)
-  set (CMAKE_Fortran_FLAGS_RELEASE "-O3 ${EXTRA_FLAGS} " CACHE STRING "" FORCE)
-  set (CMAKE_Fortran_FLAGS_DEBUG   "-O0 -traceback -g -debug all -check all -ftrapuv -warn nointerfaces ${EXTRA_FLAGS} " CACHE STRING "" FORCE)
-# A partir de CMake 3.1
-# -prof-gen:srcpos -prof-dir${PROJECT_BINARY_DIR}
+set_target_properties ( ${LIB_NAME}-static
+  PROPERTIES
+  OUTPUT_NAME ${LIB_NAME}
+  if(NOT MSVC_IDE)
+  PREFIX lib
+  endif()
+  VERSION ${VERSION}
+  ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+  Fortran_MODULE_DIRECTORY ${MODULE_DIR} )
+set_target_properties ( ${LIB_NAME}
+  PROPERTIES
+  OUTPUT_NAME ${LIB_NAME}
+  if(NOT MSVC_IDE)
+  PREFIX lib
+  endif()
+  SOVERSION ${VERSION_MAJOR}.${VERSION_MINOR}
+  VERSION ${VERSION}
+  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+  Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR} )
 
-ELSEIF (${CMAKE_Fortran_COMPILER_ID} STREQUAL "XL" OR Fortran_COMPILER_NAME MATCHES "xlf*")
-  # xlf (untested)
-  set(FORTRAN_FLAGS "-q64 -qrealsize=8 -qsuffix=f=f90:cpp=f90 ${EXTRA_FLAGS} ")
-  set (CMAKE_Fortran_FLAGS "${FORTRAN_FLAGS} ${MACROS} ${INCLUDES}" CACHE STRING "" FORCE)
-  set (CMAKE_Fortran_FLAGS_RELEASE "-O3 -qstrict ${EXTRA_FLAGS} " CACHE STRING "" FORCE)
-  set (CMAKE_Fortran_FLAGS_DEBUG   "-O0 -g -qfullpath -qkeepparm ${EXTRA_FLAGS} " CACHE STRING "" FORCE)
-ELSE ()
-  message ("No optimized Fortran compiler flags are known, we just try -O2...")
-  set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
-  set (CMAKE_Fortran_FLAGS_DEBUG   "-O0 -g")
-ENDIF ()
+#-------------------------------------
+# Build the documentation with FORD
+#-------------------------------------
+set ( SKIP_DOC_GEN TRUE CACHE BOOL
+  "Disable building the API documentation with FORD" )
+if ( NOT SKIP_DOC_GEN )
+  find_program ( FORD ford )
+  if ( FORD ) # Found
+    file ( COPY "${CMAKE_SOURCE_DIR}/media" DESTINATION "${CMAKE_BINARY_DIR}/" )
+    file ( GLOB_RECURSE PAGES_FILES "${CMAKE_SOURCE_DIR}/pages/*.*")
+    set ( DOC_DIR "${CMAKE_BINARY_DIR}/doc" )
+    set ( PAGES_DIR "${CMAKE_SOURCE_DIR}/pages" )
+    set ( PROJ_DIR "${CMAKE_SOURCE_DIR}/src" )
+    set ( FORD_PROJECT_FILE "${CMAKE_SOURCE_DIR}/json-fortran.md" )
+    # Pick the preprocessor to use based on the Fortran compiler
+    if ( "${CMAKE_Fortran_COMPILER_ID}" MATCHES "Intel" )
+      set ( FPP "fpp\n" )
+    else ()
+      set ( FPP "gfortran -E\n" ) # default to gfortran -E for gfortran and unsupported compilers
+    endif ()
+    file ( WRITE "${CMAKE_BINARY_DIR}/.PREPROCESSOR" "${FPP}" )
+    # Dynamically generate the FORD outputs list
+    message ( STATUS "Dynamically computing FORD output information..." )
+    if ( NOT (DEFINED FORD_OUTPUTS_CACHED) )
+      message ( STATUS "Running FORD to dynamically compute documentation outputs, this could take a while..." )
+      execute_process ( COMMAND ${CMAKE_COMMAND} -E remove_directory ${DOC_DIR}
+	COMMAND ${CMAKE_COMMAND} -E make_directory ${DOC_DIR}
+	COMMAND "${FORD}" --debug -d "${PROJ_DIR}" -o "${DOC_DIR}" -p "${PAGE_DIR}" "${FORD_PROJECT_FILE}" OUTPUT_QUIET )
+    else ()
+      message ( STATUS "Re-using cached FORD outputs, rather than regenerating them" )
+    endif ()
+    file ( GLOB_RECURSE FORD_OUTPUTS
+      "${DOC_DIR}/*.*" )
+    file ( GLOB_RECURSE FORD_CLEAN_OUTPUTS
+      "${DOC_DIR}/*.*" )
+    if ( (DEFINED FORD_OUTPUTS) AND ( NOT ( "${FORD_OUTPUTS}" STREQUAL "" ) ) )
+      message ( STATUS "Caching FORD outputs" )
+      set ( FORD_OUTPUTS_CACHED "${FORD_OUTPUTS}"
+	CACHE STRING "variable containing FORD outputs to prevent rebuilding FORD docs" FORCE )
+    endif ()
+    message ( STATUS "Done dynamically computing FORD outputs." )
 
-SET(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--allow-multiple-definition")
-SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition")
+    foreach ( DOC_SRC_FILE ${VTK_LIB_SRCS} ${VTK_TEST_SRCS} ${CMAKE_SOURCE_DIR}/README.md
+        ${CMAKE_SOURCE_DIR}/CHANGELOG.md ${CMAKE_SOURCE_DIR}/CONTRIBUTING.md
+        ${CMAKE_SOURCE_DIR}/LICENSE.mit.md ${CMAKE_SOURCE_DIR}/LICENSE.gpl3.md 
+        ${PAGES_FILES} )
+      list ( APPEND FORD_DEPENDS "${DOC_SRC_FILE}" )
+    endforeach ()
+    add_custom_command ( OUTPUT ${FORD_OUTPUTS_CACHED}
+      COMMAND "${FORD}" --debug ${MACRO_FLAG} -d "${PROJ_DIR}" -o "${DOC_DIR}" -p "${CMAKE_SOURCE_DIR}/pages" "${FORD_PROJECT_FILE}"
+      MAIN_DEPENDENCY "${FORD_PROJECT_FILE}"
+      DEPENDS ${FORD_DEPENDS}
+      COMMENT "Building HTML documentation for ${CMAKE_PROJECT_NAME} using FORD" )
+    add_custom_target ( documentation ALL
+      DEPENDS ${FORD_OUTPUTS_CACHED} )
+    set ( INSTALL_API_DOCUMENTATION TRUE
+      CACHE BOOL "Install FORD generated documentation?" )
+    if ( INSTALL_API_DOCUMENTATION )
+      if ( USE_GNU_INSTALL_CONVENTION )
+	install ( DIRECTORY "${DOC_DIR}/" DESTINATION "${CMAKE_INSTALL_DOCDIR}" )
+      else ()
+	install ( DIRECTORY "${DOC_DIR}/" DESTINATION "${CMAKE_INSTALL_PREFIX}/${PACKAGE_VERSION}/doc" )
+      endif ()
+    endif ()
+  else () # Not found
+    message ( WARNING
+      "FORD not found! Please set the CMake cache variable FORD to point to the installed FORD executable, and reconfigure or disable building the documentation. FORD can be installed from PYPI with `sudo pip install FORD` or from <https://github.com/cmacmackin/ford> If you do not wish to install FORD and build the JSON-Fortran documentation, then please set the CMake cache variable SKIP_DOC_GEN to TRUE." )
+  endif ()
+endif ()
 
-message (STATUS "CMAKE_Fortran_COMPILER full path: " ${CMAKE_Fortran_COMPILER})
-message (STATUS "CMAKE_Fortran_FLAGS: " ${CMAKE_Fortran_FLAGS})
-message (STATUS "CMAKE_Fortran_FLAGS_RELEASE: " ${CMAKE_Fortran_FLAGS_RELEASE})
-message (STATUS "CMAKE_Fortran_FLAGS_DEBUG: " ${CMAKE_Fortran_FLAGS_DEBUG})
+#--------------------------
+# Handle test related stuff
+#--------------------------
+set ( ENABLE_TESTS FALSE CACHE BOOL
+  "Enable the lib_vtk_io tests." )
 
-#################################################################
-# ENABLE TESTING
-#################################################################
+#---------------------------------------------------------------------
+# Add some tests to ensure that the software is performing as expected
+#---------------------------------------------------------------------
+if ( ENABLE_TESTS )
+    message("skip testing!")
+endif()
 
-IF(${PROJECT_NAME}_ENABLE_TESTS)
-    ENABLE_TESTING()
-    INCLUDE(CTest)
-ENDIF()
+#-------------------------
+# Perform the installation
+#-------------------------
 
-#################################################################
-# STATIC LIBRARIES
-#################################################################
-# Try to search first static libraries
-IF(NOT ${BUILD_SHARED_LIBS})
-    SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a ${CMAKE_FIND_LIBRARY_SUFFIXES}")
-ENDIF()
+install ( TARGETS ${LIB_NAME} ${LIB_NAME}-static
+  EXPORT ${PACKAGE_NAME}-targets
+  LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
+  ARCHIVE DESTINATION "${INSTALL_LIB_DIR}" )
 
-#################################################################
-# ADD SOURCE SUBDIRS
-#################################################################
+# Code to  fix the dylib install name on Mac.
+include ( cmake/fixupInstallNameDir.cmake )
 
-ADD_SUBDIRECTORY(${LIB_PATH})
-IF(${PROJECT_NAME}_ENABLE_TESTS)
-    ADD_SUBDIRECTORY(${TESTS_PATH})
-ENDIF()
+set(MOD_DIR_TO_INSTALL "${MODULE_DIR}")
+set(MOD_DESTINATION_DIR "${INSTALL_MOD_DIR}")
+install(
+  CODE "file(GLOB_RECURSE MODULE_FILES \"${MOD_DIR_TO_INSTALL}/*.mod\")"
+  CODE "file(GLOB_RECURSE SUBMOD_FILES \"${MOD_DIR_TO_INSTALL}/*.smod\")"
+  CODE "file(INSTALL \${MODULE_FILES} DESTINATION \"\${CMAKE_INSTALL_PREFIX}/${MOD_DESTINATION_DIR}\")"
+  CODE "file(INSTALL \${SUBMOD_FILES} DESTINATION \"\${CMAKE_INSTALL_PREFIX}/${MOD_DESTINATION_DIR}\")"
+  )
 
-#################################################################
-# CREATE CONFIG FILE
-#################################################################
+#------------------------------------------
+# Add portable unistall command to makefile
+#------------------------------------------
+# Adapted from the CMake Wiki FAQ
+configure_file ( "${CMAKE_SOURCE_DIR}/cmake/uninstall.cmake.in" "${CMAKE_BINARY_DIR}/uninstall.cmake"
+    @ONLY)
 
-CONFIGURE_FILE(${CMAKE_PATH}/${PROJECT_NAME}Config.cmake.in 
-               ${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-               @ONLY)
+add_custom_target ( uninstall
+    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_BINARY_DIR}/uninstall.cmake" )
 
+#-----------------------------------------------------
+# Publicize installed location to other CMake projects
+#-----------------------------------------------------
+install ( EXPORT ${PACKAGE_NAME}-targets DESTINATION "${EXPORT_INSTALL_DIR}" )
+
+include ( CMakePackageConfigHelpers ) # Standard CMake module
+write_basic_package_version_file( "${CMAKE_BINARY_DIR}/${PACKAGE_NAME}-config-version.cmake"
+  VERSION ${VERSION}
+  COMPATIBILITY SameMajorVersion )
+
+# provides COMPILER_CONSISTENCY_CHECK
+include ( cmake/FCompilerConsistencyCheck.cmake )
+
+# install package config file
+configure_package_config_file (
+  "${CMAKE_SOURCE_DIR}/cmake/pkg/${CMAKE_PROJECT_NAME}-config.cmake.in"
+  "${CMAKE_BINARY_DIR}/pkg/${PACKAGE_NAME}-config.cmake"
+  INSTALL_DESTINATION "${EXPORT_INSTALL_DIR}"
+  PATH_VARS EXPORT_INSTALL_DIR INSTALL_MOD_DIR )
+
+# Install the config and version files so that we can find this project with others
+install ( FILES
+  "${CMAKE_BINARY_DIR}/pkg/${PACKAGE_NAME}-config.cmake"
+  "${CMAKE_BINARY_DIR}/${PACKAGE_NAME}-config-version.cmake"
+  DESTINATION "${EXPORT_INSTALL_DIR}" )
+
+#----------------------------------------------
+# Make build tree targets accessible for import
+#----------------------------------------------
+export ( TARGETS ${LIB_NAME} ${LIB_NAME}-static FILE ${PACKAGE_NAME}-targets.cmake )
+
+# build tree package config file, NOT installed
+configure_file (
+  "${CMAKE_SOURCE_DIR}/cmake/${CMAKE_PROJECT_NAME}-config.cmake.in"
+  "${CMAKE_BINARY_DIR}/${PACKAGE_NAME}-config.cmake"
+  @ONLY )
+
+set ( ENABLE_BUILD_TREE_EXPORT FALSE CACHE BOOL
+  "Add the ${PACKAGE_NAME} build tree to the CMake package registry?" )
+if ( ENABLE_BUILD_TREE_EXPORT )
+  export ( PACKAGE ${PACKAGE_NAME} )
+endif ()
+
+# pkg-config stuff
+configure_file(
+   "${CMAKE_CURRENT_SOURCE_DIR}/lib_vtk_io.pc.cmake.in"
+   "${CMAKE_CURRENT_BINARY_DIR}/lib_vtk_io.pc"
+   @ONLY
+)
+install(FILES
+   "${CMAKE_CURRENT_BINARY_DIR}/lib_vtk_io.pc"
+   DESTINATION "${INSTALL_LIB_DIR}/pkgconfig"
+)
+
+if(MSVC_IDE)
+   INCLUDE_DIRECTORIES("src")
+   SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fpp")
+endif()
